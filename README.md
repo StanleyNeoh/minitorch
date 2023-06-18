@@ -21,19 +21,19 @@ pip install -r requirements.txt
 ```
 
 ## Features implemented
-[x] Variable wrapper around numpy
-[x] Operations between Variable
-[x] Autograd
-[x] Autograd Checker
-[ ] Optimizers
-[ ] Layers
-[ ] Losses
-[ ] Datasets
-[ ] Dataloaders
-[ ] Training loop
-[ ] Model saving/loading
-[ ] GPU support
-[ ] Distributed training
-[ ] ONNX export
-[ ] JIT compilation
-[ ] C++ backend
+- [x] Variable wrapper around numpy
+- [x] Operations between Variable
+- [x] Autograd
+- [x] Autograd Checker
+- [ ] Optimizers
+- [ ] Layers
+- [ ] Losses
+- [ ] Datasets
+- [ ] Dataloaders
+- [ ] Training loop
+- [ ] Model saving/loading
+- [ ] GPU support
+- [ ] Distributed training
+- [ ] ONNX export
+- [ ] JIT compilation
+- [ ] C++ backend
