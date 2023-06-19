@@ -8,6 +8,17 @@ from .functions import F
 from .variable import V
 
 class GradResult:
+    """
+    A class to store the result of gradient checking.
+
+    Attributes:
+        - i (int): index of result 
+        - x (float): value of input used
+        - calgrad (float): calculated gradient
+        - expgrad (float): expected gradient
+        - passed (bool): whether the test passed
+        - remarks (str): remarks of the test 
+    """
     def __init__(
             self,
             i: int,
@@ -17,6 +28,19 @@ class GradResult:
             passed: bool,
             remarks: Optional[str] = None,
             ) -> None:
+        """
+        Initialize a result.
+
+        Args:
+            i (int): index of result
+            x (float): value of input used
+            calgrad (float): calculated gradient
+            expgrad (float): expected gradient
+            passed (bool): whether the test passed
+            remarks (str, optional): remarks of the test. Defaults to None.
+        Returns:
+            None
+        """
         self.i = i
         self.x = x
         self.calgrad = calgrad
@@ -28,6 +52,12 @@ class GradResult:
     
     @classmethod
     def header(cls) -> str:
+        """
+        Return the header of the result table.
+
+        Returns:
+            str: header of the result table
+        """
         return f"{'i':<3} {'x':<15} {'cal':<15} {'exp':<15} {'diff':<15} {'passed':<10} {'remarks':<15}"
 
     def __str__(self) -> str:
@@ -37,6 +67,21 @@ class GradResult:
         return f"{self.i:<3} {self.x:<15.5f} {self.calgrad:<15.5f} {self.expgrad:<15.5f} {self.calgrad - self.expgrad:<15.5f} {str(self.passed):<10} {self.remarks}"
 
 class GradChecker:
+    """
+    A class to check the gradient of a function, given a model.
+
+    Attributes:
+        - model (Callable[..., V]): model to check
+        - increment (float): increment to use for finite difference
+        - rtol (float): relative tolerance
+        - atol (float): absolute tolerance
+        - bound (float): bound for finite difference
+        - all_passed (Optional[bool]): whether all tests passed
+        - x (Optional[npt.NDArray]): input used
+        - calgrads (Optional[npt.NDArray]): calculated gradients
+        - expgrads (Optional[npt.NDArray]): expected gradients
+        - results (Optional[list[GradResult]]): results of the test
+    """
     def __init__(
             self,
             model: Callable[..., V],
@@ -45,6 +90,18 @@ class GradChecker:
             atol: float = 1e-3,
             bound: float = 1e3,
             ) -> None:
+        """
+        Initialize a gradient checker with a model.
+
+        Args:
+            model (Callable[..., V]): model to check
+            increment (float, optional): increment to use for finite difference. Defaults to 1e-6.
+            rtol (float, optional): relative tolerance. Defaults to 1e-3.
+            atol (float, optional): absolute tolerance. Defaults to 1e-3.
+            bound (float, optional): bound for finite difference. Defaults to 1e3.
+        Returns:
+            None
+        """
         self.model = model
         self.increment = increment
         self.rtol = rtol
@@ -59,6 +116,22 @@ class GradChecker:
         self.results: Optional[list[GradResult]] = None
 
     def evaluate(self, xs: list[V]) -> bool: 
+        """
+        Evaluate the model with the given inputs and check the gradients.
+        Small adjustments are made to the inputs to approximate the actual gradients
+        which are then compared with the calculated gradients.
+        Populates the following attributes of the class.
+        * all_passed
+        * x
+        * calgrads
+        * expgrads
+        * results
+
+        Args:
+            xs (list[V]): inputs to evaluate the model with
+        Returns:    
+            bool: whether all tests passed
+        """
         out = self.model(*xs)
         out.backward()
         refy = out.item()
@@ -98,6 +171,12 @@ class GradChecker:
         return self.all_passed
     
     def dump(self) -> str:
+        """
+        Return the results of the last test in a table.
+
+        Returns:
+            str: table of the results
+        """
         if self.results is None:
             return str(self) 
         return GradResult.header() + "\n" + "\n".join([str(r) for r in self.results])
@@ -111,6 +190,24 @@ class GradChecker:
             return "GradChecker: Failed"
 
 class FunctionChecker(GradChecker):
+    """
+    A class to check the gradient of a function, given a model.
+    Subclass of GradChecker and specialises in stress testing the calculation of gradients
+    by generating random inputs.
+
+    Attributes:
+        - function (Callable[..., V]): function to check
+        - nargs (int): number of arguments to the function
+        - epoch (int): number of tests to run
+        - name (Optional[str]): name of the function
+        - dims (tuple): dimensions of the random inputs
+        - diameter (float): diameter of the random inputs
+        - nonzero (Optional[float]): minimum value of the random inputs
+        - increment (float): increment to use for finite difference
+        - rtol (float): relative tolerance
+        - atol (float): absolute tolerance
+        - bound (float): bound for finite difference
+    """
     merger = F.sum
     def __init__(
         self,
@@ -130,6 +227,25 @@ class FunctionChecker(GradChecker):
         atol: float = 1e-3,
         bound: float = 1e3,
     ):
+        """
+        Initialise the FunctionChecker with the given parameters.
+
+        Args:
+            function (Callable[..., V]): function to check
+            nargs (int): number of arguments to the function
+            epoch (int, optional): number of tests to run. Defaults to 50.
+            name (Optional[str], optional): name of the function. Defaults to None.
+            dims (tuple, optional): dimensions of the random inputs. Defaults to (5, 5).
+            diameter (float, optional): diameter of the random inputs. Defaults to 10.0.
+            nonzero (Optional[float], optional): value to replace zero values of test inputs. Defaults to None.
+            increment (float, optional): increment to use for finite difference. Defaults to 1e-6.
+            rtol (float, optional): relative tolerance. Defaults to 1e-3.
+            atol (float, optional): absolute tolerance. Defaults to 1e-3.
+            bound (float, optional): bound for finite difference. Defaults to 1e3.
+        
+        Returns:
+            None
+        """
         def model(*xs: list[V]) -> V:
             x = function(*xs)
             x = FunctionChecker.merger(x)
@@ -151,6 +267,12 @@ class FunctionChecker(GradChecker):
         self.epoch = epoch
 
     def stresstest(self) -> bool:
+        """
+        Run the stress test.
+
+        Returns:
+            bool: whether the test passed
+        """
         for e in range(self.epoch): 
             args = []
             for i in range(self.nargs):
@@ -172,6 +294,9 @@ class FunctionChecker(GradChecker):
             return f"Function Checker: {self.name} failed"
 
 def test_all_functions():
+    """
+    Test all functions
+    """
     funcs = [
         #(Name, Function, Number of Arguments, nonzero replacement)
         (None, F.sum, 1, None),
@@ -195,7 +320,7 @@ def test_all_functions():
     for name, func, nargs, nonzero in funcs:
         name = name or func.__name__
         checker = FunctionChecker(func, nargs, name=name, nonzero=nonzero)
-        res = checker.evaluate()
+        res = checker.stresstest()
         print(checker)
         if not res:
             print(checker.dump())

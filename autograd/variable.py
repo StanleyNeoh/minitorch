@@ -5,11 +5,31 @@ import numpy as np
 import numpy.typing as npt
 
 class V:
+    """
+    A variable that can be used to build a computation graph and track gradient.
+
+    Attributes:
+        - data (npt.NDArray): data of this variable
+        - requires_grad (bool): whether to track gradient
+        - grad (npt.NDArray): gradient of this variable
+        - _backward (Optional[Callable[[], None]]): backward function of this variable
+        - _deps (list[V]): dependencies of this variable
+    """
     def __init__(
             self, 
             data: npt.NDArray, 
-            requires_grad: bool =False
+            requires_grad: bool = False
             ) -> None:
+        """
+        Initialize a variable from a numpy array.
+        Numpy array will be converted to float128.
+
+        Args:
+            data (npt.NDArray): numpy array
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+        Returns:
+            None
+        """
         self.data = data.astype(np.float128)
         self.requires_grad = requires_grad
         self.grad: npt.NDArray = np.zeros_like(data, dtype=np.float128)
@@ -20,6 +40,23 @@ class V:
 
     @classmethod
     def of(cls, x: Data, requires_grad: bool =False) -> V:
+        """
+        Create a variable from a data.
+
+        If data is already a variable, return it.
+
+        If data is a float or int, convert it to numpy array of size 1 and convert it to a variable.
+
+        If data is a list, convert it to a numpy array and then convert it to a variable.
+
+        If data is a numpy array, convert it to a variable.
+
+        Args:
+            x (Data): float, int, list, numpy array or variable
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+        Returns:
+            V: variable
+        """
         if isinstance(x, V):
             return x
 
@@ -34,14 +71,40 @@ class V:
         return V(data, requires_grad=requires_grad) 
 
     def zero_grad(self) -> None:
+        """
+        Zero gradient of this variable.
+        
+        Returns:
+            None
+        """
         if self.requires_grad:
             self.grad = np.zeros_like(self.data, dtype=np.float128)
 
     def add_to_grad(self, grad: npt.NDArray) -> None:
+        """
+        Add a gradient to this variable.
+        This is used to accumulate gradient from multiple sources.
+        If this variable does not require gradient, do nothing.
+
+        Args:
+            grad (npt.NDArray): gradient to be added
+        Returns:
+            None
+        """
         if self.requires_grad:
             self.grad += grad
     
     def add_deps(self, vars: list[V]) -> None:
+        """
+        Add dependencies to this variable.
+        Dependencies are variables that makes this variable.
+        If this variable does not require gradient, do nothing.
+
+        Args:
+            vars (list[V]): list of variables
+        Returns:
+            None
+        """
         if not self.requires_grad:
             return
         for v in vars:
@@ -49,10 +112,29 @@ class V:
                 self._deps.append(v)
     
     def set_backward(self, _backward: Callable[[], None]) -> None:
+        """
+        Set backward function of this variable.
+
+        The backward function is a callback that updates the gradients of dependencies.
+
+        If this variable does not require gradient, do nothing.
+
+        Args:
+            _backward (Callable[[], None]): backward function
+        Returns:
+            None
+        """
         if self.requires_grad:
             self._backward = _backward
     
     def backward(self) -> None:
+        """
+        Backpropagate gradient to dependencies.
+        If this variable does not require gradient, do nothing.
+
+        Returns:
+            None
+        """
         assert self.data.size == 1, 'Only scalar variable can be backpropagated' 
         # Gradient of variable must be fully evaluated before it can update gradient of dependencies
         # This can be ensured by performing topological sort on the computation graph
@@ -69,6 +151,14 @@ class V:
                 var._backward()
 
     def item(self, *args):
+        """
+        Get item from data.
+
+        Args:
+            *args: arguments to be passed to numpy.ndarray.item
+        Returns:
+            float: item from data
+        """
         return self.data.item(*args)
 
     def __repr__(self):
