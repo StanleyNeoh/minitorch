@@ -75,7 +75,8 @@ class GradChecker:
         - increment (float): increment to use for finite difference
         - rtol (float): relative tolerance
         - atol (float): absolute tolerance
-        - bound (float): bound for finite difference
+        - bound (float): threshold for gradients. Sets gradients to infinity if \
+            their absolute value exceed this value. Defaults to 1e3. 
         - all_passed (Optional[bool]): whether all tests passed
         - x (Optional[npt.NDArray]): input used
         - calgrads (Optional[npt.NDArray]): calculated gradients
@@ -98,7 +99,8 @@ class GradChecker:
             increment (float, optional): increment to use for finite difference. Defaults to 1e-6.
             rtol (float, optional): relative tolerance. Defaults to 1e-3.
             atol (float, optional): absolute tolerance. Defaults to 1e-3.
-            bound (float, optional): bound for finite difference. Defaults to 1e3.
+            bound (float, optional): Threshold for gradients. Sets gradients to infinity if \
+            their absolute value exceed this value. Defaults to 1e3. 
         Returns:
             None
         """
@@ -206,7 +208,8 @@ class FunctionChecker(GradChecker):
         - increment (float): increment to use for finite difference
         - rtol (float): relative tolerance
         - atol (float): absolute tolerance
-        - bound (float): bound for finite difference
+        - bound (float): threshold for gradients. Sets gradients to infinity if \
+            their absolute value exceed this value. Defaults to 1e3. 
     """
     merger = F.sum
     def __init__(
@@ -241,7 +244,8 @@ class FunctionChecker(GradChecker):
             increment (float, optional): increment to use for finite difference. Defaults to 1e-6.
             rtol (float, optional): relative tolerance. Defaults to 1e-3.
             atol (float, optional): absolute tolerance. Defaults to 1e-3.
-            bound (float, optional): bound for finite difference. Defaults to 1e3.
+            bound (float, optional): Threshold for gradients. Sets gradients to infinity if \
+            their absolute value exceed this value. Defaults to 1e3. 
         
         Returns:
             None

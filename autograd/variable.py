@@ -172,8 +172,11 @@ class V:
             return 'con({})'.format(self.data)
     
     def __neg__(self) -> V:
-        # Dx -x = -1
+        """ 
+        Negate this variable.
 
+        Dx -x = -1
+        """
         requires_grad = self.requires_grad
         data = -self.data
         out = V(data, requires_grad=requires_grad)
@@ -183,10 +186,13 @@ class V:
         out.add_deps([self])
         return out
 
-    def __add__(self, other: Data | V) -> V:
-        # Dx x+y = 1
-        # Dy x+y = 1
-
+    def __add__(self, other: Data) -> V:
+        """
+        Add this variable with another float, int, list, numpy array or variable.
+        
+        Dx x+y = 1
+        Dy x+y = 1
+        """
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data + v.data
@@ -198,10 +204,13 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __mul__(self, other: V) -> V:
-        # Dx x*y = y
-        # Dy x*y = x
+    def __mul__(self, other: Data) -> V:
+        """
+        Multiply this variable with another float, int, list, numpy array or variable.
 
+        Dx x*y = y
+        Dy x*y = x
+        """
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data * v.data
@@ -214,9 +223,12 @@ class V:
         return out
     
     def __sub__(self, other: V) -> V:
-        # Dx x-y = 1
-        # Dy x-y = -1
+        """
+        Subtract this variable with another float, int, list, numpy array or variable.
 
+        Dx x-y = 1
+        Dy x-y = -1
+        """
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data - v.data
@@ -229,9 +241,12 @@ class V:
         return out
 
     def __truediv__(self, other: V) -> V:
-        # Dx x/y = 1/y
-        # Dy x/y = -x/y^2
+        """
+        Divide this variable with another float, int, list, numpy array or variable.
 
+        Dx x/y = 1/y
+        Dy x/y = -x/y^2
+        """
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data / v.data
@@ -244,10 +259,12 @@ class V:
         return out
     
     def __pow__(self, other: V) -> V:
-        # Note: absolute value of self.data will be taken
-        # Dx |x|^y = (x/|x|) * y * |x|^(y-1) 
-        # Dy |x|^y = log(|x|) * |x|^y
+        """
+        Raise this absolute of this variable to the power of another float, int, list, numpy array or variable.
 
+        Dx |x|^y = (x/|x|) * y * |x|^(y-1) 
+        Dy |x|^y = log(|x|) * |x|^y
+        """
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         base = np.abs(self.data)
