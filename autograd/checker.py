@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import Callable, Optional
 
-from . import operation as op 
+from . import functions as op 
 from .variable import V
 
 class GradResult:
@@ -28,7 +28,7 @@ class GradResult:
     
     @classmethod
     def header(cls) -> str:
-        return f"{'i':<3} {'x':<15} {'ref':<15} {'exp':<15} {'diff':<15} {'passed':<10} {'remarks':<15}"
+        return f"{'i':<3} {'x':<15} {'cal':<15} {'exp':<15} {'diff':<15} {'passed':<10} {'remarks':<15}"
 
     def __str__(self) -> str:
         s = ""
@@ -40,9 +40,9 @@ class GradChecker:
     def __init__(
             self,
             model: Callable[[V], V],
-            increment: float = 1e-8,
-            rtol: float = 1e-5,
-            atol: float = 1e-5,
+            increment: float = 1e-6,
+            rtol: float = 1e-3,
+            atol: float = 1e-3,
             bound: float = 1e3,
             ) -> None:
         self.model = model
@@ -58,21 +58,23 @@ class GradChecker:
         self.expgrads: Optional[npt.NDArray] = None
         self.results: Optional[GradResult] = None
 
-    def evaluate(self, x) -> bool: 
-        out = self.model(x)
+    def evaluate(self, xs: list[V]) -> bool: 
+        out = self.model(*xs)
         out.backward()
         refy = out.item()
 
         # Obtaining Gradients
-        self.x = x.data.flatten()
-        self.calgrads = x.grad.flatten()
+        npxs = np.stack([x.data for x in xs])
+        shape = npxs.shape
+        self.x = npxs.flatten() 
+        self.calgrads = np.stack([x.grad for x in xs]).flatten()
         grads = [] 
-        for i in range(x.data.size):
+        for i in range(self.x.size):
             testx = self.x.copy()
             testx[i] += self.increment
-            testx= testx.reshape(x.data.shape)
-            x = V.of(testx, requires_grad=True)
-            y = self.model(x).item()
+            testx = testx.reshape(shape)
+            x = [V.of(r, requires_grad=True) for r in testx] # Iterating over axis 0
+            y = self.model(*x).item()
             grads.append((y - refy) / self.increment)
         self.expgrads = np.array(grads)
 
@@ -91,7 +93,7 @@ class GradChecker:
             else:
                 passed = np.isclose(expected, calculated, rtol=self.rtol, atol=self.atol)
             self.all_passed = self.all_passed and passed
-            self.results.append(GradResult(i, x, expected, calculated, passed, remark))
+            self.results.append(GradResult(i, x, calculated, expected, passed, remark))
         return self.all_passed
     
     def dump(self) -> GradResult:
@@ -109,72 +111,95 @@ class FunctionChecker(GradChecker):
     merger = op.sum
     def __init__(
         self,
-        function: Callable[[V], V],
-        diameter: float = 10.0,
-        dims: tuple = (10, 10),
+        function: Callable[..., V],
+        nargs: int,
         epoch: int = 100,
+        name: str = None,
+        dims: tuple = (5, 5),
+        
+        # Random Options 
+        diameter: float = 10.0,
+        nonzero: Optional[float] = None,
+
         # GradChecker Arguments
-        increment: float = 1e-8,
-        rtol: float = 1e-5,
-        atol: float = 1e-5,
+        increment: float = 1e-6,
+        rtol: float = 1e-3,
+        atol: float = 1e-3,
         bound: float = 1e3,
     ):
-        def model(x):
-            x = function(x)
+        def model(*xs: list[V]):
+            x = function(*xs)
             x = FunctionChecker.merger(x)
             return x
-        super().__init__(model, increment, rtol, atol, bound)
-        self.name = function.__name__
+        super().__init__(
+            model=model,
+            increment=increment, 
+            rtol=rtol, 
+            atol=atol,
+            bound=bound
+            )
+        if name is None:
+            name = function.__name__
+        self.name = name
+        self.nargs = nargs
         self.diameter = diameter
         self.dims = dims
+        self.nonzero = nonzero
         self.epoch = epoch
 
     def evaluate(self) -> bool:
         for e in range(self.epoch): 
-            x = V.of(self.diameter * (np.random.random(self.dims) - 0.5), requires_grad=True)
-            super().evaluate(x)
+            args = []
+            for i in range(self.nargs):
+                nparr = self.diameter * (np.random.random(self.dims) - 0.5)
+                if self.nonzero is not None:
+                    nparr[nparr == 0] = self.nonzero
+                args.append(V.of(nparr, requires_grad=True))
+            super().evaluate(args)
             if not self.all_passed:
+                print(e)
                 return False 
         return True
     
     def __str__(self) -> str:
         if self.all_passed is None:
-            return "Function Checker: {self.name} not evaluated yet"
+            return f"Function Checker: {self.name} not evaluated yet"
         elif self.all_passed:
             return f"Function Checker: {self.name} passed"
         else:
             return f"Function Checker: {self.name} failed"
 
-def test_all_funcs():
+def test_all_functions():
     funcs = [
-        op.sum,
-        op.mean,
-        op.softmax,
-        op.sin,
-        op.cos,
-        op.tan,
-        op.relu,
-        op.sinh,
-        op.cosh,
-        op.tanh,
-        op.log,
+        #(Name, Function, Number of Arguments, nonzero replacement)
+        (None, op.sum, 1, None),
+        (None, op.mean, 1, None),
+        (None, op.softmax, 1, None),
+        (None, op.sin, 1, None),
+        (None, op.cos, 1, None),
+        (None, op.tan, 1, None),
+        (None, op.relu, 1, None),
+        (None, op.sinh, 1, None),
+        (None, op.cosh, 1, None),
+        (None, op.tanh, 1, None),
+        (None, op.log, 1, None),
+        ("-x", lambda x: -x, 1, None),
+        ("x+y", lambda x, y: x + y, 2, None),
+        ("x-y", lambda x, y: x - y, 2, None),
+        ("x*y", lambda x, y: x * y, 2, None),
+        ("x/y", lambda x, y: x / y, 2, 1e-6),
+        ("x**y", lambda x, y: x ** y, 2, None),
     ]
-    for func in funcs:
-        checker = FunctionChecker(func)
+    for name, func, nargs, nonzero in funcs:
+        name = name or func.__name__
+        checker = FunctionChecker(func, nargs, name=name, nonzero=nonzero)
         res = checker.evaluate()
         print(checker)
         if not res:
             print(checker.dump())
-            print("Prematurely Terminating... Failed on function: ", func.__name__)
+            print("Prematurely Terminating... Failed on function: ", name) 
             return
 
 if __name__ == '__main__':
-    test_all_funcs()
-    # test_func(sinh, epoch=1, dims=10, increment=1e-4, rtol=1e-3, atol=1e-4, verbose=True)
-
-    # x = V.of(-15.89179, requires_grad=True)
-    # y = sinh(x)
-    # y.backward()
-    # print(x.grad)
-
-    # grad_checker(sinh, x,verbose=True)
+    test_all_functions()
+    

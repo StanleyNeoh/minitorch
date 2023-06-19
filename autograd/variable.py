@@ -4,7 +4,6 @@ from typing import Callable, TypeAlias, Optional
 import numpy as np
 import numpy.typing as npt
 
-
 class V:
     def __init__(
             self, 
@@ -25,7 +24,7 @@ class V:
             return x
 
         if isinstance(x, float) or isinstance(x, int):
-            data = np.asarray(x)
+            data = np.array([x])
         elif isinstance(x, list):
             data = np.array(x)
         elif isinstance(x, np.ndarray):
@@ -72,16 +71,6 @@ class V:
     def item(self, *args):
         return self.data.item(*args)
 
-    def __neg__(self) -> V:
-        requires_grad = self.requires_grad
-        data = -self.data
-        out = V(data, requires_grad=requires_grad)
-        def _backward():
-            self.add_to_grad(-out.grad)
-        out.set_backward(_backward)
-        out.add_deps([self])
-        return out
-   
     def __repr__(self):
         return 'V(data={}, grad={}, requires_grad={})'.format(
             self.data, self.grad, self.requires_grad)
@@ -92,7 +81,22 @@ class V:
         else:
             return 'con({})'.format(self.data)
     
+    def __neg__(self) -> V:
+        # Dx -x = -1
+
+        requires_grad = self.requires_grad
+        data = -self.data
+        out = V(data, requires_grad=requires_grad)
+        def _backward():
+            self.add_to_grad(-out.grad)
+        out.set_backward(_backward)
+        out.add_deps([self])
+        return out
+
     def __add__(self, other: Data | V) -> V:
+        # Dx x+y = 1
+        # Dy x+y = 1
+
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data + v.data
@@ -105,6 +109,9 @@ class V:
         return out
 
     def __mul__(self, other: V) -> V:
+        # Dx x*y = y
+        # Dy x*y = x
+
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data * v.data
@@ -117,6 +124,9 @@ class V:
         return out
     
     def __sub__(self, other: V) -> V:
+        # Dx x-y = 1
+        # Dy x-y = -1
+
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data - v.data
@@ -129,7 +139,9 @@ class V:
         return out
 
     def __truediv__(self, other: V) -> V:
-        assert other.data != 0.0, 'Division by zero'
+        # Dx x/y = 1/y
+        # Dy x/y = -x/y^2
+
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data / v.data
@@ -142,13 +154,19 @@ class V:
         return out
     
     def __pow__(self, other: V) -> V:
+        # Note: absolute value of self.data will be taken
+        # Dx |x|^y = (x/|x|) * y * |x|^(y-1) 
+        # Dy |x|^y = log(|x|) * |x|^y
+
         v = V.of(other) 
         requires_grad = self.requires_grad or v.requires_grad
-        data = np.power(self.data, v.data)
+        base = np.abs(self.data)
+        sign = np.sign(self.data)
+        data = np.power(base, v.data)
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(v.data * np.power(self.data, v.data - 1.0) * out.grad)
-            v.add_to_grad(np.log(self.data) * data * out.grad)
+            self.add_to_grad(sign * v.data * np.power(base, v.data - 1.0) * out.grad)
+            v.add_to_grad(np.log(base) * data * out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
