@@ -1,9 +1,11 @@
 import numpy as np
 from functools import reduce
 
-from .variable import V 
+from .variable import V # type: ignore
 
 ## Matrix operations
+
+
 def sum(var: V, axis=None, keepdims=True):
     require_grad = var.requires_grad
     data = np.sum(var.data, axis=axis, keepdims=keepdims)
@@ -133,3 +135,17 @@ def sigmoid(var: V):
     out.set_backward(_backward)
     out.add_deps([var])
     return out
+
+class F:
+    sum = sum
+    mean = mean
+    softmax = softmax
+    sin = sin
+    cos = cos
+    tan = tan
+    relu = relu
+    sinh = sinh
+    cosh = cosh
+    tanh = tanh
+    log = log
+    sigmoid = sigmoid

@@ -4,14 +4,14 @@ import numpy as np
 import numpy.typing as npt
 from typing import Callable, Optional
 
-from . import functions as op 
+from .functions import F
 from .variable import V
 
 class GradResult:
     def __init__(
             self,
             i: int,
-            x: V,
+            x: float,
             calgrad: float,
             expgrad: float,
             passed: bool,
@@ -39,7 +39,7 @@ class GradResult:
 class GradChecker:
     def __init__(
             self,
-            model: Callable[[V], V],
+            model: Callable[..., V],
             increment: float = 1e-6,
             rtol: float = 1e-3,
             atol: float = 1e-3,
@@ -56,7 +56,7 @@ class GradChecker:
         self.x: Optional[npt.NDArray] = None
         self.calgrads: Optional[npt.NDArray] = None
         self.expgrads: Optional[npt.NDArray] = None
-        self.results: Optional[GradResult] = None
+        self.results: Optional[list[GradResult]] = None
 
     def evaluate(self, xs: list[V]) -> bool: 
         out = self.model(*xs)
@@ -81,7 +81,8 @@ class GradChecker:
         # Comparing Gradients
         self.results = []
         self.all_passed = True
-        for i, (expected, calculated, x) in enumerate(zip(self.expgrads, self.calgrads, self.x)):
+        assert self.expgrads is not None and self.calgrads is not None and self.x is not None, "Assignment Error"
+        for i, (expected, calculated, xf) in enumerate(zip(self.expgrads, self.calgrads, self.x)):
             passed = True
             remark = None
             if abs(expected) > self.bound and abs(calculated) > self.bound:
@@ -93,10 +94,12 @@ class GradChecker:
             else:
                 passed = np.isclose(expected, calculated, rtol=self.rtol, atol=self.atol)
             self.all_passed = self.all_passed and passed
-            self.results.append(GradResult(i, x, calculated, expected, passed, remark))
+            self.results.append(GradResult(i, xf, calculated, expected, passed, remark))
         return self.all_passed
     
-    def dump(self) -> GradResult:
+    def dump(self) -> str:
+        if self.results is None:
+            return str(self) 
         return GradResult.header() + "\n" + "\n".join([str(r) for r in self.results])
 
     def __str__(self) -> str:
@@ -108,13 +111,13 @@ class GradChecker:
             return "GradChecker: Failed"
 
 class FunctionChecker(GradChecker):
-    merger = op.sum
+    merger = F.sum
     def __init__(
         self,
         function: Callable[..., V],
         nargs: int,
-        epoch: int = 100,
-        name: str = None,
+        epoch: int = 50,
+        name: Optional[str] = None,
         dims: tuple = (5, 5),
         
         # Random Options 
@@ -127,7 +130,7 @@ class FunctionChecker(GradChecker):
         atol: float = 1e-3,
         bound: float = 1e3,
     ):
-        def model(*xs: list[V]):
+        def model(*xs: list[V]) -> V:
             x = function(*xs)
             x = FunctionChecker.merger(x)
             return x
@@ -147,7 +150,7 @@ class FunctionChecker(GradChecker):
         self.nonzero = nonzero
         self.epoch = epoch
 
-    def evaluate(self) -> bool:
+    def stresstest(self) -> bool:
         for e in range(self.epoch): 
             args = []
             for i in range(self.nargs):
@@ -155,9 +158,8 @@ class FunctionChecker(GradChecker):
                 if self.nonzero is not None:
                     nparr[nparr == 0] = self.nonzero
                 args.append(V.of(nparr, requires_grad=True))
-            super().evaluate(args)
+            self.evaluate(args)
             if not self.all_passed:
-                print(e)
                 return False 
         return True
     
@@ -172,17 +174,17 @@ class FunctionChecker(GradChecker):
 def test_all_functions():
     funcs = [
         #(Name, Function, Number of Arguments, nonzero replacement)
-        (None, op.sum, 1, None),
-        (None, op.mean, 1, None),
-        (None, op.softmax, 1, None),
-        (None, op.sin, 1, None),
-        (None, op.cos, 1, None),
-        (None, op.tan, 1, None),
-        (None, op.relu, 1, None),
-        (None, op.sinh, 1, None),
-        (None, op.cosh, 1, None),
-        (None, op.tanh, 1, None),
-        (None, op.log, 1, None),
+        (None, F.sum, 1, None),
+        (None, F.mean, 1, None),
+        (None, F.softmax, 1, None),
+        (None, F.sin, 1, None),
+        (None, F.cos, 1, None),
+        (None, F.tan, 1, None),
+        (None, F.relu, 1, None),
+        (None, F.sinh, 1, None),
+        (None, F.cosh, 1, None),
+        (None, F.tanh, 1, None),
+        (None, F.log, 1, None),
         ("-x", lambda x: -x, 1, None),
         ("x+y", lambda x, y: x + y, 2, None),
         ("x-y", lambda x, y: x - y, 2, None),
