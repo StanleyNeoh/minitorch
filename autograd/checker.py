@@ -221,7 +221,7 @@ class FunctionChecker(GradChecker):
         dims: tuple = (5, 5),
         
         # Random Options 
-        randmaps: list[Callable[[npt.NDArray], npt.NDArray]] = None,
+        randmaps: Optional[list[Callable[[npt.NDArray], npt.NDArray]]] = None,
 
         # GradChecker Arguments
         increment: float = 1e-6,
@@ -264,12 +264,14 @@ class FunctionChecker(GradChecker):
             )
         if name is None:
             name = function.__name__
+        if randmaps is None:
+            randmaps = [lambda x: x] * nargs
+        assert len(randmaps) == nargs, "Number of random maps must be equal to number of arguments"
 
         self.nargs = nargs
         self.epoch = epoch
         self.name = name
         self.dims = dims
-        assert len(randmaps) == nargs, "Number of random maps must be equal to number of arguments"
         self.randmaps = randmaps
 
     def stresstest(self) -> bool:
@@ -279,6 +281,7 @@ class FunctionChecker(GradChecker):
         Returns:
             bool: whether the test passed
         """
+        assert self.randmaps is not None, "Random maps not initialised"
         for e in range(self.epoch): 
             args = []
             for i in range(self.nargs):
