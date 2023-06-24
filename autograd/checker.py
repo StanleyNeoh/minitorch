@@ -5,6 +5,7 @@ import numpy.typing as npt
 from typing import Callable, Optional
 
 from .functions import F
+from .losses import L
 from .variable import V
 
 class GradResult:
@@ -204,7 +205,6 @@ class FunctionChecker(GradChecker):
         - name (Optional[str]): name of the function
         - dims (tuple): dimensions of the random inputs
         - diameter (float): diameter of the random inputs
-        - nonzero (Optional[float]): minimum value of the random inputs
         - increment (float): increment to use for finite difference
         - rtol (float): relative tolerance
         - atol (float): absolute tolerance
@@ -221,8 +221,7 @@ class FunctionChecker(GradChecker):
         dims: tuple = (5, 5),
         
         # Random Options 
-        diameter: float = 10.0,
-        nonzero: Optional[float] = None,
+        randmaps: list[Callable[[npt.NDArray], npt.NDArray]] = None,
 
         # GradChecker Arguments
         increment: float = 1e-6,
@@ -239,8 +238,10 @@ class FunctionChecker(GradChecker):
             epoch (int, optional): number of tests to run. Defaults to 50.
             name (Optional[str], optional): name of the function. Defaults to None.
             dims (tuple, optional): dimensions of the random inputs. Defaults to (5, 5).
-            diameter (float, optional): diameter of the random inputs. Defaults to 10.0.
-            nonzero (Optional[float], optional): value to replace zero values of test inputs. Defaults to None.
+
+            randmaps (list[Callable[[float], float]], optional): list of functions to map \
+                random numbers from 0 to 1. Defaults to lambda x: x.
+
             increment (float, optional): increment to use for finite difference. Defaults to 1e-6.
             rtol (float, optional): relative tolerance. Defaults to 1e-3.
             atol (float, optional): absolute tolerance. Defaults to 1e-3.
@@ -263,12 +264,13 @@ class FunctionChecker(GradChecker):
             )
         if name is None:
             name = function.__name__
-        self.name = name
+
         self.nargs = nargs
-        self.diameter = diameter
-        self.dims = dims
-        self.nonzero = nonzero
         self.epoch = epoch
+        self.name = name
+        self.dims = dims
+        assert len(randmaps) == nargs, "Number of random maps must be equal to number of arguments"
+        self.randmaps = randmaps
 
     def stresstest(self) -> bool:
         """
@@ -280,9 +282,7 @@ class FunctionChecker(GradChecker):
         for e in range(self.epoch): 
             args = []
             for i in range(self.nargs):
-                nparr = self.diameter * (np.random.random(self.dims) - 0.5)
-                if self.nonzero is not None:
-                    nparr[nparr == 0] = self.nonzero
+                nparr = self.randmaps[i](np.random.random(self.dims))
                 args.append(V.of(nparr, requires_grad=True))
             self.evaluate(args)
             if not self.all_passed:
@@ -301,29 +301,54 @@ def test_all_functions():
     """
     Test all functions
     """
+    def uniform(s: float, e: float) -> Callable[[npt.NDArray], npt.NDArray]:
+        def f(x: npt.NDArray) -> npt.NDArray:
+            return s + (e - s) * x
+        return f
+    
+    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-6) -> Callable[[npt.NDArray], npt.NDArray]:
+        def f(x: npt.NDArray) -> npt.NDArray:
+            while True:
+                x = uniform(start, end)(x)
+                passed = True 
+                for e in exclude:
+                    if np.any(abs(x - e) < tolerance):
+                        passed = False
+                        break
+                if passed:
+                    return x
+        return f
+
     funcs = [
-        #(Name, Function, Number of Arguments, nonzero replacement)
-        (None, F.sum, 1, None),
-        (None, F.mean, 1, None),
-        (None, F.softmax, 1, None),
-        (None, F.sin, 1, None),
-        (None, F.cos, 1, None),
-        (None, F.tan, 1, None),
-        (None, F.relu, 1, None),
-        (None, F.sinh, 1, None),
-        (None, F.cosh, 1, None),
-        (None, F.tanh, 1, None),
-        (None, F.log, 1, None),
-        ("-x", lambda x: -x, 1, None),
-        ("x+y", lambda x, y: x + y, 2, None),
-        ("x-y", lambda x, y: x - y, 2, None),
-        ("x*y", lambda x, y: x * y, 2, None),
-        ("x/y", lambda x, y: x / y, 2, 1e-6),
-        ("x**y", lambda x, y: x ** y, 2, None),
+        #(Name, Function, Number of Arguments, randmap) 
+        (None,      F.sum,                      1, [uniform(-10.0, 10.0)]),
+        (None,      F.mean,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.softmax,                  1, [uniform(-10.0, 10.0)]),
+        (None,      F.sin,                      1, [uniform(-10.0, 10.0)]),
+        (None,      F.cos,                      1, [uniform(-10.0, 10.0)]),
+        (None,      F.tan,                      1, [uniform(-10.0, 10.0)]),
+        (None,      F.relu,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.sinh,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.cosh,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.tanh,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.log,                      1, [uniform_exclude(-10.0, 10.0, [0.0])]),
+        (None,      F.elu,                      1, [uniform(-10.0, 10.0)]),
+        (None,      F.leakyrelu,                1, [uniform(-10.0, 10.0)]),
+        ("-x",      lambda x: -x,               1, [uniform(-10.0, 10.0)]), 
+        ("x+y",     lambda x, y: x + y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        ("x-y",     lambda x, y: x - y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        ("x*y",     lambda x, y: x * y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        ("x/y",     lambda x, y: x / y,         2, [uniform(-10.0, 10.0), uniform_exclude(-10.0, 10.0, [0.0])]),
+        ("x**y",    lambda x, y: x ** y,        2, [uniform(-10.0, 10.0), uniform(-5.0, 5.0)]),
+        (None,      L.crossentropyloss,         2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
+        (None,      L.kulldivergence,           2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
+        (None,      L.l1loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        (None,      L.l2loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        (None,      L.huberloss,                2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
     ]
-    for name, func, nargs, nonzero in funcs:
+    for name, func, nargs, randmaps in funcs:
         name = name or func.__name__
-        checker = FunctionChecker(func, nargs, name=name, nonzero=nonzero)
+        checker = FunctionChecker(func, nargs, name=name, randmaps=randmaps)
         res = checker.stresstest()
         print(checker)
         if not res:

@@ -70,6 +70,15 @@ class V:
             raise Exception('Invalid data type')
         return V(data, requires_grad=requires_grad) 
 
+    def isscalar(self) -> bool:
+        """
+        Check if this variable is a scalar.
+
+        Returns:
+            bool: whether this variable is a scalar
+        """
+        return self.data.size == 1
+
     def zero_grad(self) -> None:
         """
         Zero gradient of this variable.

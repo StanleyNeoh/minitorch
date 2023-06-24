@@ -25,9 +25,9 @@ pip install -r requirements.txt
 - [x] Operations between Variable
 - [x] Autograd
 - [x] Autograd Checker
+- [x] Losses
 - [ ] Optimizers
 - [ ] Layers
-- [ ] Losses
 - [ ] Datasets
 - [ ] Dataloaders
 - [ ] Training loop

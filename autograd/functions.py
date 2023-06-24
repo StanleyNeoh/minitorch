@@ -60,7 +60,7 @@ def mean(var: V, axis=None, keepdims=True):
     out = V(data, requires_grad=require_grad)
     def _backward():
         if axis is None:
-            n = reduce(lambda x, y: x * y, var.data.shape)
+            n = var.data.size
         elif type(axis) is int:
             n = var.data.shape[axis]
         elif type(axis) is tuple:
@@ -270,6 +270,48 @@ def sigmoid(var: V):
     out.add_deps([var])
     return out
 
+def elu(var: V, a = 1) -> V:
+    """
+    Exponential linear unit of a variable.
+    Alpha (a) defaults to 1.
+
+    Args:
+        var (V): variable
+        a (float): alpha
+
+    Returns:
+        V: variable
+    """
+    require_grad = var.requires_grad
+    data = np.where(var.data > 0, var.data, a * (np.exp(var.data) - 1))
+    out = V(data, requires_grad=require_grad)
+    def _backward():
+        var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * np.exp(var.data) * out.grad)
+    out.set_backward(_backward)
+    out.add_deps([var])
+    return out
+
+def leakyrelu(var: V, a = 0.01) -> V:
+    """
+    Leaky rectified linear unit of a variable.
+    Alpha (a) defaults to 0.01.
+
+    Args:
+        var (V): variable
+        a (float): alpha
+
+    Returns:
+        V: variable
+    """
+    require_grad = var.requires_grad
+    data = np.where(var.data > 0, var.data, a * var.data)
+    out = V(data, requires_grad=require_grad)
+    def _backward():
+        var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * out.grad)
+    out.set_backward(_backward)
+    out.add_deps([var])
+    return out
+
 class F:
     """
     Class containing all the functions that can be applied to a variable.
@@ -300,3 +342,5 @@ class F:
     tanh = tanh
     log = log
     sigmoid = sigmoid
+    elu = elu
+    leakyrelu = leakyrelu
