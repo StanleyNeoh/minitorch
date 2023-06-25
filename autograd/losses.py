@@ -1,8 +1,9 @@
 import numpy as np
 
 from .variable import V # type: ignore
+from .functions import F # type: ignore
 
-def crossentropyloss(output: V, target: V, axis=None, keepdims=True):
+def crossentropyloss(output: V, target: V, axis=None, keepdims=False):
     """
     Cross entropy loss for a variable.
     
@@ -30,17 +31,9 @@ def crossentropyloss(output: V, target: V, axis=None, keepdims=True):
     Returns:
         V: loss variable
     """
-    require_grad = output.requires_grad or target.requires_grad
-    data = -np.sum(target.data * np.log(output.data), axis=axis, keepdims=keepdims)
-    out = V(data, requires_grad=require_grad)
-    def _backward():
-        output.add_to_grad(-target.data / output.data * out.grad)
-        target.add_to_grad(-np.log(output.data) * out.grad)
-    out.set_backward(_backward)
-    out.add_deps([output, target])
-    return out
+    return -F.sum(target * F.log(output), axis=axis, keepdims=keepdims)
 
-def kulldivergence(output: V, target: V, axis=None, keepdims=True):
+def kulldivergence(output: V, target: V, axis=None, keepdims=False):
     """
     Kullback-Leibler divergence for a variable.
 
@@ -60,17 +53,9 @@ def kulldivergence(output: V, target: V, axis=None, keepdims=True):
     Returns:
         V: loss variable
     """
-    require_grad = output.requires_grad or target.requires_grad
-    data = np.sum(target.data * np.log(target.data / output.data), axis=axis, keepdims=keepdims)
-    out = V(data, requires_grad=require_grad)
-    def _backward():
-        output.add_to_grad(-target.data / output.data * out.grad)
-        target.add_to_grad((np.log(target.data / output.data) + 1) * out.grad)
-    out.set_backward(_backward)
-    out.add_deps([output, target])
-    return out
+    return F.sum(target * F.log(target / output), axis=axis, keepdims=keepdims)
 
-def l1loss(output: V, target: V, axis=None, keepdims=True):
+def l1loss(output: V, target: V, axis=None, keepdims=False):
     """
     L1 loss for a variable.
 
@@ -84,17 +69,9 @@ def l1loss(output: V, target: V, axis=None, keepdims=True):
     Returns:
         V: loss variable
     """
-    require_grad = output.requires_grad or target.requires_grad
-    data = np.sum(np.abs(output.data - target.data), axis=axis, keepdims=keepdims)
-    out = V(data, requires_grad=require_grad)
-    def _backward():
-        output.add_to_grad(np.sign(output.data - target.data) * out.grad)
-        target.add_to_grad(-np.sign(output.data - target.data) * out.grad)
-    out.set_backward(_backward)
-    out.add_deps([output, target])
-    return out
+    return F.mean(F.abs(output - target), axis=axis, keepdims=keepdims)
 
-def l2loss(output: V, target: V, axis=None, keepdims=True):
+def l2loss(output: V, target: V, axis=None, keepdims=False):
     """
     L2 loss for a variable.
 
@@ -108,17 +85,9 @@ def l2loss(output: V, target: V, axis=None, keepdims=True):
     Returns:
         V: loss variable
     """
-    require_grad = output.requires_grad or target.requires_grad
-    data = np.sum((output.data - target.data) ** 2, axis=axis, keepdims=keepdims)
-    out = V(data, requires_grad=require_grad)
-    def _backward():
-        output.add_to_grad(2 * (output.data - target.data) * out.grad)
-        target.add_to_grad(-2 * (output.data - target.data) * out.grad)
-    out.set_backward(_backward)
-    out.add_deps([output, target])
-    return out
+    return F.mean((output - target) ** 2, axis=axis, keepdims=keepdims)
 
-def huberloss(output: V, target: V, delta: float=1.0):
+def huberloss(output: V, target: V, delta: float=1.0, axis=None, keepdims=False):
     """
     Huber loss for a variable.
 
@@ -133,17 +102,14 @@ def huberloss(output: V, target: V, delta: float=1.0):
     Returns:
         V: loss variable
     """
-    require_grad = output.requires_grad or target.requires_grad
-    diff = output.data - target.data
-    data = np.where(np.abs(diff) < delta, 0.5 * diff ** 2, delta * (np.abs(diff) - 0.5 * delta))
-    out = V(data, requires_grad=require_grad)
-    def _backward():
-        grad = np.where(np.abs(diff) < delta, diff, delta * np.sign(diff))
-        output.add_to_grad(grad * out.grad)
-        target.add_to_grad(-grad * out.grad)
-    out.set_backward(_backward)
-    out.add_deps([output])
-    return out
+    diff = output - target
+    loss = F.where(
+        F.abs(diff) < delta,
+        (diff ** 2) * 0.5, 
+        (F.abs(output - target) - (0.5 * delta)) * delta
+        )
+    loss = F.mean(loss, axis=axis, keepdims=keepdims)
+    return loss
 
 class L:
     """

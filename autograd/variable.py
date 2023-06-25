@@ -17,8 +17,9 @@ class V:
     """
     def __init__(
             self, 
-            data: npt.NDArray, 
-            requires_grad: bool = False
+            data: npt.NDArray | np.float128, 
+            requires_grad: bool = False,
+            name: Optional[str] = None
             ) -> None:
         """
         Initialize a variable from a numpy array.
@@ -30,16 +31,21 @@ class V:
         Returns:
             None
         """
-        self.data = data.astype(np.float128)
+        self.data: npt.NDArray | np.float128
+        if isinstance(data, np.float128):
+            self.data = data 
+        else:
+            self.data = data.astype(np.float128)
         self.requires_grad = requires_grad
         self.grad: npt.NDArray = np.zeros_like(data, dtype=np.float128)
 
         # deps mean dependencies == variables that makes this variable
         self._backward: Optional[Callable[[], None]] = None
         self._deps: list[V] = []
+        self.name = name
 
     @classmethod
-    def of(cls, x: Data, requires_grad: bool =False) -> V:
+    def of(cls, x: Data, requires_grad: bool = False, name: Optional[str] = None) -> V:
         """
         Create a variable from a data.
 
@@ -60,15 +66,55 @@ class V:
         if isinstance(x, V):
             return x
 
+        data: npt.NDArray | np.float128
         if isinstance(x, float) or isinstance(x, int):
-            data = np.array([x])
+            data = np.float128(x)
         elif isinstance(x, list):
             data = np.array(x)
         elif isinstance(x, np.ndarray):
             data = x
         else:
             raise Exception('Invalid data type')
-        return V(data, requires_grad=requires_grad) 
+        return V(data, requires_grad=requires_grad, name=name) 
+
+    @classmethod
+    def ones(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+        """
+        Create a variable of ones.
+
+        Args:
+            shape (tuple[int, ...]): shape of the variable
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+        Returns:
+            V: variable
+        """
+        return V.of(np.ones(shape), requires_grad=requires_grad, name=name)
+    
+    @classmethod
+    def zeros(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+        """
+        Create a variable of zeros.
+
+        Args:
+            shape (tuple[int, ...]): shape of the variable
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+        Returns:
+            V: variable
+        """
+        return V.of(np.zeros(shape), requires_grad=requires_grad, name=name)
+
+    @classmethod
+    def randn(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+        """
+        Create a variable of random values from standard normal distribution.
+
+        Args:
+            shape (tuple[int, ...]): shape of the variable
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+        Returns:
+            V: variable
+        """
+        return V.of(np.random.randn(*shape), requires_grad=requires_grad, name=name)
 
     def isscalar(self) -> bool:
         """
@@ -77,7 +123,7 @@ class V:
         Returns:
             bool: whether this variable is a scalar
         """
-        return self.data.size == 1
+        return isinstance(self.data, np.float128) 
 
     def zero_grad(self) -> None:
         """
@@ -88,6 +134,12 @@ class V:
         """
         if self.requires_grad:
             self.grad = np.zeros_like(self.data, dtype=np.float128)
+
+    def item(self) -> np.float128:
+        if self.isscalar():
+            return self.data
+        assert self.data.size == 1, 'only scalar array can be converted to float'
+        return self.data.item()
 
     def add_to_grad(self, grad: npt.NDArray) -> None:
         """
@@ -101,7 +153,7 @@ class V:
             None
         """
         if self.requires_grad:
-            self.grad += grad
+            self.grad = self.grad + grad
     
     def add_deps(self, vars: list[V]) -> None:
         """
@@ -159,16 +211,14 @@ class V:
             if callable(var._backward):
                 var._backward()
 
-    def item(self, *args):
+    def shape(self):
         """
-        Get item from data.
+        Get shape of data.
 
-        Args:
-            *args: arguments to be passed to numpy.ndarray.item
         Returns:
-            float: item from data
+            tuple[int, ...]: shape of data
         """
-        return self.data.item(*args)
+        return self.data.shape
 
     def __repr__(self):
         return 'V(data={}, grad={}, requires_grad={})'.format(
@@ -231,7 +281,7 @@ class V:
         out.add_deps([self, v])
         return out
     
-    def __sub__(self, other: V) -> V:
+    def __sub__(self, other: Data) -> V:
         """
         Subtract this variable with another float, int, list, numpy array or variable.
 
@@ -249,7 +299,7 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __truediv__(self, other: V) -> V:
+    def __truediv__(self, other: Data) -> V:
         """
         Divide this variable with another float, int, list, numpy array or variable.
 
@@ -267,7 +317,7 @@ class V:
         out.add_deps([self, v])
         return out
     
-    def __pow__(self, other: V) -> V:
+    def __pow__(self, other: Data) -> V:
         """
         Raise this absolute of this variable to the power of another float, int, list, numpy array or variable.
 
@@ -286,5 +336,48 @@ class V:
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
+
+    def __matmul__(self, other: Data) -> V:
+        """
+        Multiply this variable with another variable.
+
+        Matrix multiplication is taken over the last two dimensions of the input arrays.
+
+        See also: https://numpy.org/doc/stable/reference/generated/numpy.matmul.html
+
+        Dx x@y = y
+        Dy x@y = x
+        """
+        v = V.of(other) 
+        requires_grad = self.requires_grad or v.requires_grad
+        assert isinstance(self.data, np.ndarray), 'Matrix multiplication require operands to be numpy arrays'
+        assert isinstance(v.data, np.ndarray), 'Matrix multiplication require operands to be numpy arrays'
+
+        data = self.data @ v.data
+        out = V(data, requires_grad=requires_grad)
+        def _backward():
+            self.add_to_grad(out.grad @ v.data.T )
+            v.add_to_grad(self.data.T @ out.grad)
+        out.set_backward(_backward)
+        out.add_deps([self, v])
+        return out
+
+    def __lt__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data < V.of(other).data
+    
+    def __le__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data <= V.of(other).data
+
+    def __gt__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data > V.of(other).data
+
+    def __ge__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data >= V.of(other).data
+    
+    def __eq__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data == V.of(other).data
+
+    def __ne__(self, other: Data) -> npt.NDArray[np.bool_]:
+        return self.data != V.of(other).data
 
 Data: TypeAlias = int | float | list | npt.NDArray | V

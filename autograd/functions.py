@@ -1,9 +1,11 @@
 import numpy as np
+import numpy.typing as npt
+
 from functools import reduce
 
 from .variable import V # type: ignore
 
-## Matrix operations
+## cross axis operations
 def sum(var: V, axis=None, keepdims=True):
     """
     Sum of a variable along an axis.
@@ -99,6 +101,25 @@ def softmax(var: V, axis=None):
     return out
 
 ## Element wise operations
+def abs(var: V):
+    """
+    Absolute value of a variable.
+
+    Args:
+        var (V): variable
+
+    Returns:
+        V: variable
+    """
+    require_grad = var.requires_grad
+    data = np.abs(var.data)
+    out = V(data, requires_grad=require_grad)
+    def _backward():
+        var.add_to_grad(out.grad * np.sign(var.data))
+    out.set_backward(_backward)
+    out.add_deps([var])
+    return out
+
 def sin(var: V):
     """
     Sine of a variable.
@@ -312,11 +333,36 @@ def leakyrelu(var: V, a = 0.01) -> V:
     out.add_deps([var])
     return out
 
+## Conditional operations
+def where(cond: npt.NDArray[np.bool_], x: V, y: V):
+    """
+    Conditional variable.
+
+    Args:
+        cond (npt.NDArray[bool]): condition
+        x (V): variable
+        y (V): variable
+
+    Returns:
+        V: variable
+    """
+    require_grad = x.requires_grad or y.requires_grad
+    cond = cond.astype(np.float128)
+    data = np.where(cond, x.data, y.data)
+    out = V(data, requires_grad=require_grad)
+    def _backward():
+        x.add_to_grad(out.grad * cond)
+        y.add_to_grad(out.grad * (1.0 - cond))
+    out.set_backward(_backward)
+    out.add_deps([x, y])
+    return out
+
 class F:
     """
     Class containing all the functions that can be applied to a variable.
 
     Attributes:
+        abs (function): absolute of a variable.
         sum (function): sum of a variable along an axis.
         mean (function): mean of a variable along an axis.
         softmax (function): softmax of a variable along an axis.
@@ -329,7 +375,11 @@ class F:
         tanh (function): hyperbolic tangent of a variable.
         log (function): natural logarithm of the absolute of a variable.
         sigmoid (function): sigmoid of a variable.
+        elu (function): exponential linear unit of a variable.
+        leakyrelu (function): leaky rectified linear unit of a variable.
+        where (function): where a condition is met, return a variable, otherwise return another variable.
     """
+    abs = abs
     sum = sum
     mean = mean
     softmax = softmax
@@ -344,3 +394,4 @@ class F:
     sigmoid = sigmoid
     elu = elu
     leakyrelu = leakyrelu
+    where = where

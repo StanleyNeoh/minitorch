@@ -144,7 +144,8 @@ class GradChecker:
         shape = npxs.shape
         self.x = npxs.flatten() 
         self.calgrads = np.stack([x.grad for x in xs]).flatten()
-        grads = [] 
+        grads = []
+        assert self.x is not None, "Assignment Error"
         for i in range(self.x.size):
             testx = self.x.copy()
             testx[i] += self.increment
@@ -309,7 +310,7 @@ def test_all_functions():
             return s + (e - s) * x
         return f
     
-    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-6) -> Callable[[npt.NDArray], npt.NDArray]:
+    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-3) -> Callable[[npt.NDArray], npt.NDArray]:
         def f(x: npt.NDArray) -> npt.NDArray:
             while True:
                 x = uniform(start, end)(x)
@@ -321,9 +322,13 @@ def test_all_functions():
                 if passed:
                     return x
         return f
+    
+    def where_sin_cos(cond: V, x1: V, x2: V) -> npt.NDArray:
+        return F.where(cond > 0.5, F.sin(x1), F.cos(x2))
 
     funcs = [
-        #(Name, Function, Number of Arguments, randmap) 
+        #(Name, Function, Number of Arguments, randmaps) 
+        (None,      F.abs,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.sum,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.mean,                     1, [uniform(-10.0, 10.0)]),
         (None,      F.softmax,                  1, [uniform(-10.0, 10.0)]),
@@ -337,12 +342,14 @@ def test_all_functions():
         (None,      F.log,                      1, [uniform_exclude(-10.0, 10.0, [0.0])]),
         (None,      F.elu,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.leakyrelu,                1, [uniform(-10.0, 10.0)]),
+        (None,      where_sin_cos,              3, [uniform(0.0, 1.0), uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         ("-x",      lambda x: -x,               1, [uniform(-10.0, 10.0)]), 
         ("x+y",     lambda x, y: x + y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         ("x-y",     lambda x, y: x - y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         ("x*y",     lambda x, y: x * y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         ("x/y",     lambda x, y: x / y,         2, [uniform(-10.0, 10.0), uniform_exclude(-10.0, 10.0, [0.0])]),
         ("x**y",    lambda x, y: x ** y,        2, [uniform(-10.0, 10.0), uniform(-5.0, 5.0)]),
+        ("x@y",     lambda x, y: x @ y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         (None,      L.crossentropyloss,         2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
         (None,      L.kulldivergence,           2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
         (None,      L.l1loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
