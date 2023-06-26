@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.typing as npt
 
 from functools import reduce
 
@@ -105,10 +104,11 @@ def rms(var: V, axis=None, keepdims=True) -> V:
     elif type(axis) is tuple:
         n = reduce(lambda x, y: x * y, [var.data.shape[i] for i in axis])
     else:
-        raise 'Invalid axis'
+        raise Exception('Invalid axis')
     def _backward():
         var.add_to_grad(out.grad * var.data / (n * out.data))
     out.set_backward(_backward)
+    out.add_deps([var])
     return out
 
 def softmax(var: V, axis=None) -> V:
@@ -371,12 +371,12 @@ def leakyrelu(var: V, a = 0.01) -> V:
     return out
 
 ## Conditional operations
-def where(cond: npt.NDArray[np.bool_], x: V, y: V) -> V:
+def where(cond: np.ndarray | np.bool_, x: V, y: V) -> V:
     """
     Conditional variable.
 
     Args:
-        cond (npt.NDArray[bool]): condition
+        cond (np.ndarray) condition
         x (V): variable
         y (V): variable
 
@@ -384,7 +384,6 @@ def where(cond: npt.NDArray[np.bool_], x: V, y: V) -> V:
         V: variable
     """
     require_grad = x.requires_grad or y.requires_grad
-    cond = cond.astype(np.float128)
     data = np.where(cond, x.data, y.data)
     out = V(data, requires_grad=require_grad)
     def _backward():

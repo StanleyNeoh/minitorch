@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Callable, TypeAlias, Optional
 
 import numpy as np
-import numpy.typing as npt
 
 class V:
     """
@@ -17,7 +16,7 @@ class V:
     """
     def __init__(
             self, 
-            data: npt.NDArray | np.float128, 
+            data: DataType,
             requires_grad: bool = False,
             name: Optional[str] = None
             ) -> None:
@@ -26,18 +25,18 @@ class V:
         Numpy array will be converted to float128.
 
         Args:
-            data (npt.NDArray): numpy array
+            data (np.ndarray): numpy array
             requires_grad (bool, optional): whether to track gradient. Defaults to False.
         Returns:
             None
         """
-        self.data: npt.NDArray | np.float128
+        self.data: DataType
         if isinstance(data, np.float128):
             self.data = data 
         else:
             self.data = data.astype(np.float128)
         self.requires_grad = requires_grad
-        self.grad: npt.NDArray = np.zeros_like(data, dtype=np.float128)
+        self.grad: np.ndarray = np.zeros_like(data, dtype=np.float128)
 
         # deps mean dependencies == variables that makes this variable
         self._backward: Optional[Callable[[], None]] = None
@@ -45,7 +44,7 @@ class V:
         self.name = name
 
     @classmethod
-    def of(cls, x: Data, requires_grad: bool = False, name: Optional[str] = None) -> V:
+    def of(cls, x: InputType, requires_grad: bool = False, name: Optional[str] = None) -> V:
         """
         Create a variable from a data.
 
@@ -58,15 +57,16 @@ class V:
         If data is a numpy array, convert it to a variable.
 
         Args:
-            x (Data): float, int, list, numpy array or variable
+            x (InputType): float, int, list, numpy array or variable
             requires_grad (bool, optional): whether to track gradient. Defaults to False.
         Returns:
             V: variable
         """
+        assert isinstance(x, InputClasses), f'Invalid data type: {type(x)}'
         if isinstance(x, V):
             return x
 
-        data: npt.NDArray | np.float128
+        data: np.ndarray | np.float128
         if isinstance(x, float) or isinstance(x, int):
             data = np.float128(x)
         elif isinstance(x, list):
@@ -156,18 +156,24 @@ class V:
             self.grad = np.zeros_like(self.data, dtype=np.float128)
 
     def item(self) -> np.float128:
-        if self.isscalar():
+        """
+        Get the value of this variable as a scalar.
+
+        Returns:
+            np.float128: value of this variable
+        """
+        if isinstance(self.data, np.float128):
             return self.data
         return self.data.item()
 
-    def add_to_grad(self, grad: npt.NDArray) -> None:
+    def add_to_grad(self, grad: np.ndarray) -> None:
         """
         Add a gradient to this variable.
         This is used to accumulate gradient from multiple sources.
         If this variable does not require gradient, do nothing.
 
         Args:
-            grad (npt.NDArray): gradient to be added
+            grad (np.ndarray): gradient to be added
         Returns:
             None
         """
@@ -230,7 +236,7 @@ class V:
             if callable(var._backward):
                 var._backward()
 
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
         """
         Get shape of data.
 
@@ -264,7 +270,7 @@ class V:
         out.add_deps([self])
         return out
 
-    def __add__(self, other: Data) -> V:
+    def __add__(self, other: InputType) -> V:
         """
         Add this variable with another float, int, list, numpy array or variable.
         
@@ -282,7 +288,7 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __mul__(self, other: Data) -> V:
+    def __mul__(self, other: InputType) -> V:
         """
         Multiply this variable with another float, int, list, numpy array or variable.
 
@@ -300,7 +306,7 @@ class V:
         out.add_deps([self, v])
         return out
     
-    def __sub__(self, other: Data) -> V:
+    def __sub__(self, other: InputType) -> V:
         """
         Subtract this variable with another float, int, list, numpy array or variable.
 
@@ -318,7 +324,7 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __truediv__(self, other: Data) -> V:
+    def __truediv__(self, other: InputType) -> V:
         """
         Divide this variable with another float, int, list, numpy array or variable.
 
@@ -336,7 +342,7 @@ class V:
         out.add_deps([self, v])
         return out
     
-    def __pow__(self, other: Data) -> V:
+    def __pow__(self, other: InputType) -> V:
         """
         Raise this absolute of this variable to the power of another float, int, list, numpy array or variable.
 
@@ -356,7 +362,7 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __matmul__(self, other: Data) -> V:
+    def __matmul__(self, other: InputType) -> V:
         """
         Multiply this variable with another variable.
 
@@ -381,22 +387,28 @@ class V:
         out.add_deps([self, v])
         return out
 
-    def __lt__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data < V.of(other).data
-    
-    def __le__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data <= V.of(other).data
+    def __lt__(self, other: object) -> np.ndarray | np.bool_:
+        assert isinstance(other, InputClasses), 'Comparison requires operands to be int, float, list, numpy array or variable'
+        if not isinstance(other, V):
+            return self.data < other
+        elif isinstance(self.data, np.ndarray) and isinstance(other.data, np.ndarray):
+            assert self.data.shape == other.data.shape, 'Comparison requires operands to have the same shape'
+            return self.data < other.data
+        elif isinstance(self.data, np.float128) and isinstance(other.data, np.float128):
+            return self.data < other.data
+        raise TypeError('Comparison requires operands to be of same type')
 
-    def __gt__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data > V.of(other).data
+    def __gt__(self, other: object) -> np.ndarray | np.bool_:
+        assert isinstance(other, InputClasses), 'Comparison requires operands to be int, float, list, numpy array or variable'
+        if not isinstance(other, V):
+            return self.data > other
+        elif isinstance(self.data, np.ndarray) and isinstance(other.data, np.ndarray):
+            assert self.data.shape == other.data.shape, 'Comparison requires operands to have the same shape'
+            return self.data > other.data
+        elif isinstance(self.data, np.float128) and isinstance(other.data, np.float128):
+            return self.data > other.data
+        raise TypeError('Comparison requires operands to be of same type')
 
-    def __ge__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data >= V.of(other).data
-    
-    def __eq__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data == V.of(other).data
-
-    def __ne__(self, other: Data) -> npt.NDArray[np.bool_]:
-        return self.data != V.of(other).data
-
-Data: TypeAlias = int | float | list | npt.NDArray | V
+InputClasses = (int, float, list, np.ndarray, V)
+InputType: TypeAlias = int | float | list | np.ndarray | V
+DataType: TypeAlias = np.ndarray | np.float128

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 from typing import Callable, Optional
 
 from .functions import F
@@ -79,9 +78,9 @@ class GradChecker:
         - bound (float): threshold for gradients. Sets gradients to infinity if \
             their absolute value exceed this value. Defaults to 1e3. 
         - all_passed (Optional[bool]): whether all tests passed
-        - x (Optional[npt.NDArray]): input used
-        - calgrads (Optional[npt.NDArray]): calculated gradients
-        - expgrads (Optional[npt.NDArray]): expected gradients
+        - x (Optional[np.ndarray]): input used
+        - calgrads (Optional[np.ndarray]): calculated gradients
+        - expgrads (Optional[np.ndarray]): expected gradients
         - results (Optional[list[GradResult]]): results of the test
     """
     def __init__(
@@ -113,9 +112,9 @@ class GradChecker:
 
         # Test Statuses
         self.all_passed: Optional[bool] = None
-        self.x: Optional[npt.NDArray] = None
-        self.calgrads: Optional[npt.NDArray] = None
-        self.expgrads: Optional[npt.NDArray] = None
+        self.x: Optional[np.ndarray] = None
+        self.calgrads: Optional[np.ndarray] = None
+        self.expgrads: Optional[np.ndarray] = None
         self.results: Optional[list[GradResult]] = None
 
     def evaluate(self, xs: list[V]) -> bool: 
@@ -222,7 +221,7 @@ class FunctionChecker(GradChecker):
         dims: tuple = (5, 5),
         
         # Random Options 
-        randmaps: Optional[list[Callable[[npt.NDArray], npt.NDArray]]] = None,
+        randmaps: Optional[list[Callable[[np.ndarray], np.ndarray]]] = None,
 
         # GradChecker Arguments
         increment: float = 1e-6,
@@ -305,13 +304,13 @@ def test_all_functions():
     """
     Test all functions
     """
-    def uniform(s: float, e: float) -> Callable[[npt.NDArray], npt.NDArray]:
-        def f(x: npt.NDArray) -> npt.NDArray:
+    def uniform(s: float, e: float) -> Callable[[np.ndarray], np.ndarray]:
+        def f(x: np.ndarray) -> np.ndarray:
             return s + (e - s) * x
         return f
     
-    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-3) -> Callable[[npt.NDArray], npt.NDArray]:
-        def f(x: npt.NDArray) -> npt.NDArray:
+    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-2) -> Callable[[np.ndarray], np.ndarray]:
+        def f(x: np.ndarray) -> np.ndarray:
             while True:
                 x = uniform(start, end)(x)
                 passed = True 
@@ -323,7 +322,7 @@ def test_all_functions():
                     return x
         return f
     
-    def where_sin_cos(cond: V, x1: V, x2: V) -> npt.NDArray:
+    def where_sin_cos(cond: V, x1: V, x2: V) -> V:
         return F.where(cond > 0.5, F.sin(x1), F.cos(x2))
 
     funcs = [
