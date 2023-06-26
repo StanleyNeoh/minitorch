@@ -117,7 +117,7 @@ class GradChecker:
         self.expgrads: Optional[np.ndarray] = None
         self.results: Optional[list[GradResult]] = None
 
-    def evaluate(self, xs: list[V]) -> bool: 
+    def evaluate(self, xs: list[V], initial = 2.0) -> bool: 
         """
         Evaluate the model with the given inputs and check the gradients.
         Small adjustments are made to the inputs to approximate the actual gradients
@@ -135,14 +135,14 @@ class GradChecker:
             bool: whether all tests passed
         """
         out = self.model(*xs)
-        out.backward()
+        out.backward(initial=initial)
         refy = out.item()
 
         # Obtaining Gradients
         npxs = np.stack([x.data for x in xs])
         shape = npxs.shape
         self.x = npxs.flatten() 
-        self.calgrads = np.stack([x.grad for x in xs]).flatten()
+        self.calgrads = np.stack([x.grad / initial for x in xs]).flatten()
         grads = []
         assert self.x is not None, "Assignment Error"
         for i in range(self.x.size):

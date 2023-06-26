@@ -213,7 +213,7 @@ class V:
         if self.requires_grad:
             self._backward = _backward
     
-    def backward(self) -> None:
+    def backward(self, initial = 1.0) -> None:
         """
         Backpropagate gradient to dependencies.
         If this variable does not require gradient, do nothing.
@@ -231,7 +231,7 @@ class V:
             var.zero_grad()
             topoSort.append(var)
         topo(self)
-        self.grad = np.ones_like(self.data, dtype=np.float128)
+        self.grad = np.full_like(self.data, initial, dtype=np.float128)
         for var in topoSort[::-1]:
             if callable(var._backward):
                 var._backward()
