@@ -3,7 +3,7 @@ import numpy as np
 from .variable import V # type: ignore
 from .functions import F # type: ignore
 
-def crossentropyloss(output: V, target: V, axis=None, keepdims=False):
+def crossentropyloss(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     Cross entropy loss for a variable.
     
@@ -31,9 +31,9 @@ def crossentropyloss(output: V, target: V, axis=None, keepdims=False):
     Returns:
         V: loss variable
     """
-    return -F.sum(target * F.log(output), axis=axis, keepdims=keepdims)
+    return -F.mean(target * F.log(output), axis=axis, keepdims=keepdims)
 
-def kulldivergence(output: V, target: V, axis=None, keepdims=False):
+def kulldivergence(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     Kullback-Leibler divergence for a variable.
 
@@ -53,9 +53,9 @@ def kulldivergence(output: V, target: V, axis=None, keepdims=False):
     Returns:
         V: loss variable
     """
-    return F.sum(target * F.log(target / output), axis=axis, keepdims=keepdims)
+    return F.mean(target * F.log(target / output), axis=axis, keepdims=keepdims)
 
-def l1loss(output: V, target: V, axis=None, keepdims=False):
+def l1loss(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     L1 loss for a variable.
 
@@ -71,7 +71,7 @@ def l1loss(output: V, target: V, axis=None, keepdims=False):
     """
     return F.mean(F.abs(output - target), axis=axis, keepdims=keepdims)
 
-def l2loss(output: V, target: V, axis=None, keepdims=False):
+def l2loss(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     L2 loss for a variable.
 
@@ -87,7 +87,10 @@ def l2loss(output: V, target: V, axis=None, keepdims=False):
     """
     return F.mean((output - target) ** 2, axis=axis, keepdims=keepdims)
 
-def huberloss(output: V, target: V, delta: float=1.0, axis=None, keepdims=False):
+def rmsloss(output: V, target: V, axis=None, keepdims=False) -> V:
+    return F.rms(output - target, axis=axis, keepdims=keepdims)
+
+def huberloss(output: V, target: V, delta: float=1.0, axis=None, keepdims=False) -> V:
     """
     Huber loss for a variable.
 
@@ -120,10 +123,12 @@ class L:
         kulldivergence (function): Kullback-Leibler divergence
         l1loss (function): L1 loss
         l2loss (function): L2 loss
+        rmseloss (function): Root mean squared error loss
         huberloss (function): Huber loss
     """
     crossentropyloss = crossentropyloss
     kulldivergence = kulldivergence
     l1loss = l1loss
     l2loss = l2loss
+    rmsloss = rmsloss
     huberloss = huberloss

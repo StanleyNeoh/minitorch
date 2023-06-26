@@ -328,10 +328,11 @@ def test_all_functions():
 
     funcs = [
         #(Name, Function, Number of Arguments, randmaps) 
-        (None,      F.abs,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.sum,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.mean,                     1, [uniform(-10.0, 10.0)]),
+        (None,      F.rms,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.softmax,                  1, [uniform(-10.0, 10.0)]),
+        (None,      F.abs,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.sin,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.cos,                      1, [uniform(-10.0, 10.0)]),
         (None,      F.tan,                      1, [uniform(-10.0, 10.0)]),
@@ -354,6 +355,7 @@ def test_all_functions():
         (None,      L.kulldivergence,           2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
         (None,      L.l1loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         (None,      L.l2loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        (None,      L.rmsloss,                  2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         (None,      L.huberloss,                2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
     ]
     for name, func, nargs, randmaps in funcs:

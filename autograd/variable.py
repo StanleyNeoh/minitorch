@@ -115,6 +115,26 @@ class V:
             V: variable
         """
         return V.of(np.random.randn(*shape), requires_grad=requires_grad, name=name)
+    
+    @classmethod
+    def uniform(cls, 
+                shape: tuple[int, ...], 
+                low: float =0.0,
+                high: float =1.0,
+                requires_grad: bool =False, 
+                name: Optional[str] =None) -> V:
+        """
+        Create a variable of random values from uniform distribution.
+
+        Args:
+            shape (tuple[int, ...]): shape of the variable
+            range (tuple[tuple[int,int], ...]): range of the values
+            requires_grad (bool, optional): whether to track gradient. Defaults to False.
+
+        Returns:
+            V: variable
+        """
+        return V.of(np.random.uniform(low, high, size=shape), requires_grad=requires_grad, name=name)
 
     def isscalar(self) -> bool:
         """
@@ -138,7 +158,6 @@ class V:
     def item(self) -> np.float128:
         if self.isscalar():
             return self.data
-        assert self.data.size == 1, 'only scalar array can be converted to float'
         return self.data.item()
 
     def add_to_grad(self, grad: npt.NDArray) -> None:

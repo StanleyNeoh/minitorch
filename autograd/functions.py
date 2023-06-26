@@ -6,7 +6,7 @@ from functools import reduce
 from .variable import V # type: ignore
 
 ## cross axis operations
-def sum(var: V, axis=None, keepdims=True):
+def sum(var: V, axis=None, keepdims=True) -> V:
     """
     Sum of a variable along an axis.
     
@@ -36,7 +36,7 @@ def sum(var: V, axis=None, keepdims=True):
     out.add_deps([var])
     return out
 
-def mean(var: V, axis=None, keepdims=True):
+def mean(var: V, axis=None, keepdims=True) -> V:
     """
     Mean of a variable along an axis.
     
@@ -74,7 +74,44 @@ def mean(var: V, axis=None, keepdims=True):
     out.add_deps([var])
     return out
 
-def softmax(var: V, axis=None):
+def rms(var: V, axis=None, keepdims=True) -> V:
+    """
+    Root mean square of a variable along an axis.
+
+    If axis is None, rms all elements.
+
+    If axis is an integer, rms along that axis.
+
+    If axis is a tuple, rms along all axes in the tuple.
+
+    If keepdims is True, keep the dimensions of the original variable.
+
+    If keepdims is False, remove the dimensions of the original variable.
+
+    Args:
+        var (V): variable
+        axis (int, tuple, optional): axis to rms along. Defaults to None.
+        keepdims (bool, optional): whether to keep dimensions. Defaults to True.
+    Returns:
+        V: variable
+    """
+    require_grad = var.requires_grad
+    data = np.sqrt(np.mean(var.data ** 2, axis=axis, keepdims=keepdims))
+    out = V(data, requires_grad=require_grad)
+    if axis is None:
+        n = var.data.size
+    elif type(axis) is int:
+        n = var.data.shape[axis]
+    elif type(axis) is tuple:
+        n = reduce(lambda x, y: x * y, [var.data.shape[i] for i in axis])
+    else:
+        raise 'Invalid axis'
+    def _backward():
+        var.add_to_grad(out.grad * var.data / (n * out.data))
+    out.set_backward(_backward)
+    return out
+
+def softmax(var: V, axis=None) -> V:
     """
     Softmax of a variable along an axis.
     
@@ -101,7 +138,7 @@ def softmax(var: V, axis=None):
     return out
 
 ## Element wise operations
-def abs(var: V):
+def abs(var: V) -> V:
     """
     Absolute value of a variable.
 
@@ -120,7 +157,7 @@ def abs(var: V):
     out.add_deps([var])
     return out
 
-def sin(var: V):
+def sin(var: V) -> V:
     """
     Sine of a variable.
 
@@ -139,7 +176,7 @@ def sin(var: V):
     out.add_deps([var])
     return out
 
-def cos(var: V):
+def cos(var: V) -> V:
     """
     Cosine of a variable.
 
@@ -158,7 +195,7 @@ def cos(var: V):
     out.add_deps([var])
     return out
 
-def tan(var: V): 
+def tan(var: V) -> V: 
     """
     Tangent of a variable.
 
@@ -177,7 +214,7 @@ def tan(var: V):
     out.add_deps([var])
     return out
 
-def relu(var: V):
+def relu(var: V) -> V:
     """
     Rectified linear unit of a variable.
 
@@ -196,7 +233,7 @@ def relu(var: V):
     out.add_deps([var])
     return out
 
-def sinh(var: V):
+def sinh(var: V) -> V:
     """
     Hyperbolic sine of a variable.
 
@@ -215,7 +252,7 @@ def sinh(var: V):
     out.add_deps([var])
     return out
 
-def cosh(var: V):
+def cosh(var: V) -> V:
     """
     Hyperbolic cosine of a variable.
 
@@ -234,7 +271,7 @@ def cosh(var: V):
     out.add_deps([var])
     return out
 
-def tanh(var: V):
+def tanh(var: V) -> V:
     """
     Hyperbolic tangent of a variable.
     
@@ -253,7 +290,7 @@ def tanh(var: V):
     out.add_deps([var])
     return out
 
-def log(var: V):
+def log(var: V) -> V:
     """
     Natural logarithm of the absolute of the variable.
 
@@ -272,7 +309,7 @@ def log(var: V):
     out.add_deps([var])
     return out
 
-def sigmoid(var: V):
+def sigmoid(var: V) -> V:
     """
     Sigmoid of a variable.
 
@@ -291,7 +328,7 @@ def sigmoid(var: V):
     out.add_deps([var])
     return out
 
-def elu(var: V, a = 1) -> V:
+def elu(var: V, a = 1.0) -> V:
     """
     Exponential linear unit of a variable.
     Alpha (a) defaults to 1.
@@ -334,7 +371,7 @@ def leakyrelu(var: V, a = 0.01) -> V:
     return out
 
 ## Conditional operations
-def where(cond: npt.NDArray[np.bool_], x: V, y: V):
+def where(cond: npt.NDArray[np.bool_], x: V, y: V) -> V:
     """
     Conditional variable.
 
@@ -365,6 +402,7 @@ class F:
         abs (function): absolute of a variable.
         sum (function): sum of a variable along an axis.
         mean (function): mean of a variable along an axis.
+        rms (function): root mean square of a variable along an axis.
         softmax (function): softmax of a variable along an axis.
         sin (function): sine of a variable.
         cos (function): cosine of a variable.
@@ -382,6 +420,7 @@ class F:
     abs = abs
     sum = sum
     mean = mean
+    rms = rms
     softmax = softmax
     sin = sin
     cos = cos
