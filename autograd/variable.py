@@ -171,6 +171,16 @@ class V:
         Add a gradient to this variable.
         This is used to accumulate gradient from multiple sources.
         If this variable does not require gradient, do nothing.
+       
+        A few cases to consider:
+        * grad is broadcastable to self.data.shape
+        * self.data.shape is broadcastable to grad.shape
+            * This can happen when multiple samples are used.
+            * grad.shape will be (batch_size, *self.data.shape)
+            * To ensure further flexibility, we wil generalise incoming grad to have shape (..., *self.data.shape).
+            * We cannot have self.grad broadcast to grad.shape as this will result in self.grad having shape (..., *self.data.shape)
+                which is not what we want.
+            * The way to solve this is to sum over all dimensions except the last self.data.ndim dimensions.
 
         Args:
             grad (np.ndarray): gradient to be added
@@ -178,7 +188,9 @@ class V:
             None
         """
         if self.requires_grad:
-            self.grad = self.grad + grad
+            if grad.ndim > self.data.ndim:
+                grad = np.sum(grad, axis=tuple(range(grad.ndim - self.data.ndim)))
+            self.grad += grad
     
     def add_deps(self, vars: list[V]) -> None:
         """

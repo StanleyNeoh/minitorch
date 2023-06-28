@@ -20,7 +20,7 @@ class Optimiser:
         return str(self.__repr__())
 
 class SGD(Optimiser):
-    def __init__(self, *parameters: V, lr: float = 0.001):
+    def __init__(self, *parameters: V, lr: float = 0.01):
         super().__init__(*parameters)
         self.lr = lr
     
@@ -29,7 +29,7 @@ class SGD(Optimiser):
             parameter.data = parameter.data - (parameter.grad * self.lr)
 
 class Adagrad(Optimiser):
-    def __init__(self, *parameters: V, lr: float = 0.001, eps: float = 1e-8):
+    def __init__(self, *parameters: V, lr: float = 0.01, eps: float = 1e-8):
         super().__init__(*parameters)
         self.lr = lr
         self.eps = eps
@@ -41,7 +41,7 @@ class Adagrad(Optimiser):
             parameter.data = parameter.data - (self.lr * parameter.grad / (np.sqrt(cache) + self.eps))
 
 class Adam(Optimiser):
-    def __init__(self, *parameters: V, lr: float = 0.001, beta1: float = 0.9, beta2: float = 0.999, eps: float = 1e-8):
+    def __init__(self, *parameters: V, lr: float = 0.01, beta1: float = 0.9, beta2: float = 0.999, eps: float = 1e-8):
         super().__init__(*parameters)
         self.lr = lr
         self.beta1 = beta1
