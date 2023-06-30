@@ -25,7 +25,7 @@ class V:
         Numpy array will be converted to float128.
 
         Args:
-            data (np.ndarray): numpy array
+            data (npt.NDArray | np.float128): data of this variable
             requires_grad (bool, optional): whether to track gradient. Defaults to False.
         Returns:
             None
@@ -256,6 +256,15 @@ class V:
             tuple[int, ...]: shape of data
         """
         return self.data.shape
+    
+    def copy(self) -> V:
+        """
+        Create a copy of this variable.
+
+        Returns:
+            V: copy of this variable
+        """
+        return V(self.data.copy(), requires_grad=self.requires_grad)
 
     def __repr__(self):
         return 'V(data={}, grad={}, requires_grad={})'.format(

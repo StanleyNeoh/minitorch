@@ -8,12 +8,12 @@ class Optimiser:
     """
     Base class for all optimisers.
     """
-    def __init__(self, *parameters: V):
+    def __init__(self, parameters: list[V]):
         """
         Initialise the optimiser with the parameters to optimise.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
         
         Returns:
             None
@@ -52,21 +52,21 @@ class SGD(Optimiser):
     """
     Stochastic Gradient Descent optimiser.
 
-    Args:
-        parameters (V): Parameters to optimise.
-        lr (float): Learning rate.
+    Attributes:
+        - parameters (list[V]): Parameters to optimise.
+        - lr (float): Learning rate.
     """
-    def __init__(self, *parameters: V, lr: float = 0.01):
+    def __init__(self, parameters: list[V], lr: float = 0.01):
         """
         Initialise the optimiser with the parameters to optimise and the learning rate.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
             lr (float): Learning rate.
         Returns:
             None
         """
-        super().__init__(*parameters)
+        super().__init__(parameters)
         self.lr = lr
     
     def step(self):
@@ -77,27 +77,25 @@ class Momentum(Optimiser):
     """
     Momentum optimiser.
 
-    Args:
-        parameters (V): Parameters to optimise.
-        lr (float): Learning rate.
-        b_v (float): Momentum coefficient.
-    
-    Returns:
-        None
+    Attributes:
+        - parameters (list[V]): Parameters to optimise.
+        - lr (float): Learning rate.
+        - b_v (float): Momentum coefficient.
+        - vs (list[np.ndarray]): Velocities.
     """
-    def __init__(self, *parameters: V, lr: float = 0.01, b_v: float = 0.9):
+    def __init__(self, parameters: list[V], lr: float = 0.01, b_v: float = 0.9):
         """
         Initialise the optimiser with the parameters to optimise, the learning rate and the momentum coefficient.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
             lr (float): Learning rate.
             b_v (float): Momentum coefficient.
 
         Returns:
             None
         """
-        super().__init__(*parameters)
+        super().__init__(parameters)
         self.lr = lr
         self.b_v = b_v
         self.vs = [np.zeros_like(parameter.data) for parameter in self.parameters]
@@ -117,23 +115,20 @@ class Adagrad(Optimiser):
     """
     Adagrad optimiser.
 
-    Args:
-        parameters (V): Parameters to optimise.
-        lr (float): Learning rate.
-        eps (float): Epsilon value to prevent division by zero.
-    
-    Returns:
-        None
+    Attributes:
+        - parameters (list[V]): Parameters to optimise.
+        - lr (float): Learning rate.
+        - gs (list[np.ndarray]): Gradients.
     """
-    def __init__(self, *parameters: V, lr: float = 0.01, eps: float = 1e-8):
+    def __init__(self, parameters: list[V], lr: float = 0.01, eps: float = 1e-8):
         """
         Initialise the optimiser with the parameters to optimise, the learning rate and the epsilon value.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
             lr (float): Learning rate.
         """
-        super().__init__(*parameters)
+        super().__init__(parameters)
         self.lr = lr
         self.gs = [np.full_like(parameter.data, eps) for parameter in self.parameters]
 
@@ -152,21 +147,18 @@ class RMSProp(Optimiser):
     """
     RMSProp optimiser.
 
-    Args:
-        parameters (V): Parameters to optimise.
-        lr (float): Learning rate.
-        b_g (float): Decay rate.
-        eps (float): Epsilon value to prevent division by zero.
-
-    Returns:
-        None
+    Attributes:
+        - parameters (list[V]): Parameters to optimise.
+        - lr (float): Learning rate.
+        - b_g (float): Decay rate.
+        - gs (list[np.ndarray]): Gradients.
     """
-    def __init__(self, *parameters: V, lr: float = 0.01, b_g: float = 0.9, eps: float = 1e-8):
+    def __init__(self, parameters: list[V], lr: float = 0.01, b_g: float = 0.9, eps: float = 1e-8):
         """
         Initialise the optimiser with the parameters to optimise, the learning rate, the decay rate and the epsilon value.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
             lr (float): Learning rate.
             b_g (float): Decay rate.
             eps (float): Epsilon value to prevent division by zero.
@@ -174,7 +166,7 @@ class RMSProp(Optimiser):
         Returns:
             None
         """
-        super().__init__(*parameters)
+        super().__init__(parameters)
         self.lr = lr
         self.b_g = b_g
         self.gs = [np.full_like(parameter.data, eps) for parameter in self.parameters]
@@ -194,22 +186,20 @@ class Adam(Optimiser):
     """
     Adam optimiser.
 
-    Args:
-        parameters (V): Parameters to optimise.
-        lr (float): Learning rate.
-        b_v (float): Momentum coefficient.
-        b_g (float): Decay rate.
-        eps (float): Epsilon value to prevent division by zero.
-
-    Returns:
-        None
+    Attributes:
+        - parameters (list[V]): Parameters to optimise.
+        - lr (float): Learning rate.
+        - b_v (float): Momentum coefficient.
+        - b_g (float): Decay rate.
+        - gs (list[np.ndarray]): Gradients.
+        - vs (list[np.ndarray]): Velocities.
     """
-    def __init__(self, *parameters: V, lr: float = 0.01, b_v: float = 0.9, b_g: float = 0.9, eps: float = 1e-8):
+    def __init__(self, parameters: list[V], lr: float = 0.01, b_v: float = 0.9, b_g: float = 0.9, eps: float = 1e-8):
         """
         Initialise the optimiser with the parameters to optimise, the learning rate, the momentum coefficient, the decay rate and the epsilon value.
 
         Args:
-            parameters (V): Parameters to optimise.
+            parameters (list[V]): Parameters to optimise.
             lr (float): Learning rate.
             b_v (float): Momentum coefficient.
             b_g (float): Decay rate.
@@ -218,7 +208,7 @@ class Adam(Optimiser):
         Returns:
             None
         """
-        super().__init__(*parameters)
+        super().__init__(parameters)
         self.lr = lr
         self.b_v = b_v
         self.b_g = b_g
