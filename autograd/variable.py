@@ -155,15 +155,15 @@ class V:
         if self.requires_grad:
             self.grad = np.zeros_like(self.data, dtype=np.float128)
 
-    def item(self) -> np.float128:
+    def item(self) -> float:
         """
         Get the value of this variable as a scalar.
 
         Returns:
-            np.float128: value of this variable
+            np.float: value of this variable
         """
         if isinstance(self.data, np.float128):
-            return self.data
+            return float(self.data)
         return self.data.item()
 
     def add_to_grad(self, grad: np.ndarray) -> None:

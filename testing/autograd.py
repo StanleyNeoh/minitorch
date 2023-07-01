@@ -3,9 +3,11 @@ from __future__ import annotations
 import numpy as np
 from typing import Callable, Optional
 
-from .functions import F
-from .losses import L
-from .variable import V
+from autograd.functions import F
+from autograd.losses import L
+from autograd.variable import V
+
+from .utils import uniform, uniform_exclude
 
 class GradResult:
     """
@@ -131,6 +133,7 @@ class GradChecker:
 
         Args:
             xs (list[V]): inputs to evaluate the model with
+            initial (float, optional): initial gradient. Defaults to 2.0.
         Returns:    
             bool: whether all tests passed
         """
@@ -300,73 +303,54 @@ class FunctionChecker(GradChecker):
         else:
             return f"Function Checker: {self.name} failed"
 
-def test_all_functions():
-    """
-    Test all functions
-    """
-    def uniform(s: float, e: float) -> Callable[[np.ndarray], np.ndarray]:
-        def f(x: np.ndarray) -> np.ndarray:
-            return s + (e - s) * x
-        return f
-    
-    def uniform_exclude(start: float, end: float, exclude: list[float], tolerance = 1e-2) -> Callable[[np.ndarray], np.ndarray]:
-        def f(x: np.ndarray) -> np.ndarray:
-            while True:
-                x = uniform(start, end)(x)
-                passed = True 
-                for e in exclude:
-                    if np.any(abs(x - e) < tolerance):
-                        passed = False
-                        break
-                if passed:
-                    return x
-        return f
-    
+def autograd_test():
     def where_sin_cos(cond: V, x1: V, x2: V) -> V:
         return F.where(cond > 0.5, F.sin(x1), F.cos(x2))
 
-    funcs = [
-        #(Name, Function, Number of Arguments, randmaps) 
-        (None,      F.sum,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.mean,                     1, [uniform(-10.0, 10.0)]),
-        (None,      F.rms,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.softmax,                  1, [uniform(-10.0, 10.0)]),
-        (None,      F.abs,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.sin,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.cos,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.tan,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.relu,                     1, [uniform(-10.0, 10.0)]),
-        (None,      F.sinh,                     1, [uniform(-10.0, 10.0)]),
-        (None,      F.cosh,                     1, [uniform(-10.0, 10.0)]),
-        (None,      F.tanh,                     1, [uniform(-10.0, 10.0)]),
-        (None,      F.log,                      1, [uniform_exclude(-10.0, 10.0, [0.0])]),
-        (None,      F.elu,                      1, [uniform(-10.0, 10.0)]),
-        (None,      F.leakyrelu,                1, [uniform(-10.0, 10.0)]),
-        (None,      where_sin_cos,              3, [uniform(0.0, 1.0), uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        ("-x",      lambda x: -x,               1, [uniform(-10.0, 10.0)]), 
-        ("x+y",     lambda x, y: x + y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        ("x-y",     lambda x, y: x - y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        ("x*y",     lambda x, y: x * y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        ("x/y",     lambda x, y: x / y,         2, [uniform(-10.0, 10.0), uniform_exclude(-10.0, 10.0, [0.0])]),
-        ("x**y",    lambda x, y: x ** y,        2, [uniform(-10.0, 10.0), uniform(-5.0, 5.0)]),
-        ("x@y",     lambda x, y: x @ y,         2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        (None,      L.crossentropyloss,         2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
-        (None,      L.kulldivergence,           2, [uniform(0.0, 1.0), uniform(0.0, 1.0)]),
-        (None,      L.l1loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        (None,      L.l2loss,                   2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        (None,      L.rmsloss,                  2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        (None,      L.huberloss,                2, [uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+    functionCheckers = [
+        FunctionChecker(F.sum, 1, name="Sum", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.mean, 1, name="Mean", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.rms, 1, name="RMS", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.softmax, 1, name="Softmax", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.abs, 1, name="Abs", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.sin, 1, name="Sin", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.cos, 1, name="Cos", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.tan, 1, name="Tan", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.relu, 1, name="ReLU", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.sinh, 1, name="Sinh", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.cosh, 1, name="Cosh", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.tanh, 1, name="Tanh", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.log, 1, name="Log", randmaps=[uniform_exclude(-10.0, 10.0, [0.0])]),
+        FunctionChecker(F.elu, 1, name="ELU", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(F.leakyrelu, 1, name="LeakyReLU", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(where_sin_cos, 3, name="Where", randmaps=[uniform(0.0, 1.0), uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(lambda x: -x, 1, name="-x", randmaps=[uniform(-10.0, 10.0)]),
+        FunctionChecker(lambda x, y: x + y, 2, name="x+y", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(lambda x, y: x - y, 2, name="x-y", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(lambda x, y: x * y, 2, name="x*y", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(lambda x, y: x / y, 2, name="x/y", randmaps=[uniform(-10.0, 10.0), uniform_exclude(-10.0, 10.0, [0.0])]),
+        FunctionChecker(lambda x, y: x ** y, 2, name="x**y", randmaps=[uniform(-10.0, 10.0), uniform(-5.0, 5.0)]),
+        FunctionChecker(lambda x, y: x @ y, 2, name="x@y", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(L.crossentropyloss, 2, name="CrossEntropyLoss", randmaps=[uniform(0.0, 1.0), uniform(0.0, 1.0)]),
+        FunctionChecker(L.kulldivergence, 2, name="KullDivergence", randmaps=[uniform(0.0, 1.0), uniform(0.0, 1.0)]),
+        FunctionChecker(L.l1loss, 2, name="L1Loss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(L.l2loss, 2, name="L2Loss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(L.rmsloss, 2, name="RMSLoss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
+        FunctionChecker(L.huberloss, 2, name="HuberLoss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
     ]
-    for name, func, nargs, randmaps in funcs:
-        name = name or func.__name__
-        checker = FunctionChecker(func, nargs, name=name, randmaps=randmaps)
-        res = checker.stresstest()
-        print(checker)
+    failed = []
+    for functionChecker in functionCheckers:
+        res = functionChecker.stresstest()
+        print(functionChecker)
         if not res:
-            print(checker.dump())
-            print("Prematurely Terminating... Failed on function: ", name) 
-            return
+            print(functionChecker.dump())
+            print("Prematurely Terminating... Failed on function: ", functionChecker.name) 
+            failed.append(functionChecker.name)
+
+    if len(failed) > 0:
+        print("Failed on functions: ", failed)
+    else:
+        print("All tests passed")
 
 if __name__ == '__main__':
-    test_all_functions()
-    
+    autograd_test()
