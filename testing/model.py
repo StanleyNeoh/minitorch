@@ -1,11 +1,9 @@
-from typing import Optional, Callable, Iterator
+from typing import Callable 
 import numpy as np
-import matplotlib.pyplot as plt # type: ignore
 
 from autograd import F, V, L
 from model import Model, O, Ly
-
-from .utils import uniform_data_generator, GraphPlotter1D
+from utils import PlotCanvas, RegressionPlotCanvas, LossHistoryPlotCanvas, uniform_data_generator
 
 # Regression Test Functions
 def regression0(x):
@@ -74,43 +72,55 @@ def regression_model_test():
     for refname, ref in regressions_reference:
         generator = uniform_data_generator(ref, (100, 1))
         title = f"{refname}_epoch-{num_epoch}"
-        GraphPlotter1D.queue_graph_plot(ref, label="reference")
+        
+        regression_canvas = RegressionPlotCanvas(title, "x", "y")
+        regression_canvas.add(ref, label="reference")
         for name, optimiser, loss in regression_loss:
             full_name = f"{name}_{refname}"
             model = Model.derived_from(regression_model, optimiser, loss)
             model.train(generator, num_epoch)
             print(full_name, model.statistics())
 
-            GraphPlotter1D.queue_graph_plot(model, label=full_name, ls="--")
-        GraphPlotter1D.save_graph_plot(title, f"blob/regression/loss/{refname}.png")
-        GraphPlotter1D.clear_graph_plot()
+            regression_canvas.add(model, label=full_name, ls="--")
+        regression_canvas.build(f"blob/regression/loss/{refname}.png")
     
     print("Regression Model Test: Optimiser")
     for refname, ref in regressions_reference:
         generator = uniform_data_generator(ref, (100, 1))
         title = f"{refname}_epoch-{num_epoch}"
-        GraphPlotter1D.queue_graph_plot(ref, label="reference")
+
+        regression_canvas = RegressionPlotCanvas(title, "x", "y")
+        regression_canvas.add(ref, label="reference")
         for name, optimiser, loss in optimisers:
             full_name = f"{name}_{refname}"
             model = Model.derived_from(regression_model, optimiser, loss)
             model.train(generator, num_epoch)
             print(full_name, model.statistics())
 
-            GraphPlotter1D.queue_graph_plot(model, label=full_name, ls="--")
-        GraphPlotter1D.save_graph_plot(title, f"blob/regression/optimiser/{refname}.png")
-        GraphPlotter1D.clear_graph_plot()
+            regression_canvas.add(model, label=full_name, ls="--")
+        regression_canvas.build(f"blob/regression/optimiser/{refname}.png")
 
     print("Regression Model Test: Loss History")
     ref = regression6
     generator = uniform_data_generator(ref, (100, 1))
-    title = f"Loss_epoch-{num_epoch}"
+    cum_title = f"loss_history_epoch-{num_epoch}"
+    cum_loss_canvas = LossHistoryPlotCanvas(cum_title, "iteration", "loss")
     for name, optimiser, loss in optimisers:
-        full_name = f"{name}"
         model = Model.derived_from(regression_model, optimiser, loss)
         model.train(generator, num_epoch)
-        model.queue_loss_plot(full_name)
-        print(full_name, model.statistics())
-    Model.save_loss_plot(f"blob/regression/loss_history/{title}.png")
+        print(name, model.statistics())
+
+        title = f"{name}_epoch-{num_epoch}"
+        loss_canvas = LossHistoryPlotCanvas(title, "iteration", "loss")
+        loss_canvas.add(model, label=name)
+        loss_canvas.build(f"blob/regression/loss_history/{title}.png")
+
+        cum_loss_canvas.add(model, label=name)
+    cum_loss_canvas.build(f"blob/regression/loss_history/{cum_title}.png")
+
+def model_test():
+    regression_model_test()
+
 
 if __name__ == "__main__":
-    regression_model_test()
+    model_test()

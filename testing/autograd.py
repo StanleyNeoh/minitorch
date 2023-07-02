@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 from autograd import F, V, L
 
-from .utils import uniform, uniform_exclude
+from utils import uniform, uniform_exclude
 
 class GradResult:
     """
