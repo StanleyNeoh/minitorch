@@ -226,3 +226,15 @@ class Adam(Optimiser):
             self.vs[i] = self.b_v * self.vs[i] + (1 - self.b_v) * parameter.grad
             self.gs[i] = self.b_g * self.gs[i] + (1 - self.b_g) * parameter.grad ** 2
             parameter.data -= self.lr * self.vs[i] / np.sqrt(self.gs[i])
+
+
+class O:
+    """
+    O is a module that contains all the optimisers.
+    """
+    Optimiser = Optimiser
+    SGD = SGD
+    Momentum = Momentum
+    Adagrad = Adagrad
+    RMSProp = RMSProp
+    Adam = Adam

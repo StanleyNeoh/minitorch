@@ -3,9 +3,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Callable, Optional
 
-from autograd.functions import F
-from autograd.losses import L
-from autograd.variable import V
+from autograd import F, V, L
 
 from .utils import uniform, uniform_exclude
 

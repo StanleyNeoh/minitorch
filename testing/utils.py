@@ -1,5 +1,6 @@
 from typing import Callable, Iterator
 import numpy as np
+import matplotlib.pyplot as plt # type: ignore
 
 from autograd.variable import V
 
@@ -55,3 +56,36 @@ def uniform_data_generator(
         x = V.uniform(shape, start, end)
         y = reference(x)
         yield x, y
+
+    
+class GraphPlotter1D:
+    _graph_plot_queue: list[tuple[Callable[[V], V], dict]] = []
+
+    @classmethod
+    def queue_graph_plot(cls, f: Callable[[V], V], **kwargs) -> None:
+        cls._graph_plot_queue.append((f, kwargs))
+    
+    @classmethod
+    def clear_graph_plot(cls) -> None:
+        plt.clf()
+        cls._graph_plot_queue.clear()
+    
+    @classmethod
+    def save_graph_plot(cls, 
+                  title: str,  
+                  path: str, 
+                  minX: float = -10.0, 
+                  maxX: float = 10.0, 
+                  step: float = 0.1
+                  ) -> None: 
+        plt.clf()
+        plt.title(title)
+        for f, kwargs in cls._graph_plot_queue:
+            x = V(np.arange(minX, maxX, step).reshape(-1, 1))
+            y = f(x)
+            plt.plot(x.data, y.data, **kwargs)
+        plt.legend()
+        plt.savefig(path)
+        plt.clf()
+        cls._graph_plot_queue.clear()
+    
