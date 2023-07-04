@@ -26,12 +26,12 @@ def regression5(x):
 
 def regression6(x):
     return F.where(
-        x < -10.0,
+        x < -5.0,
         (x ** 2) * 0.1 + x - 10.0, 
         F.where(
-            x < 10.0, 
-            F.sin(x) * x,
-            F.cos(x) * 5.0 - x
+            x < 5.0, 
+            F.sin(x * 2) * x,
+            F.cos(x * 2) * 5.0 - x
         ))
 
 regression_model = Ly.Sequential(
@@ -66,11 +66,11 @@ regressions_reference = [
 ]
 
 def regression_model_test():
-    num_epoch = 1000
+    num_epoch = 10000
 
     print("Regression Model Test: Loss")
     for refname, ref in regressions_reference:
-        generator = uniform_data_generator(ref, (100, 1))
+        generator = uniform_data_generator(ref)
         title = f"{refname}_epoch-{num_epoch}"
         
         regression_canvas = RegressionPlotCanvas(title, "x", "y")
@@ -86,7 +86,7 @@ def regression_model_test():
     
     print("Regression Model Test: Optimiser")
     for refname, ref in regressions_reference:
-        generator = uniform_data_generator(ref, (100, 1))
+        generator = uniform_data_generator(ref)
         title = f"{refname}_epoch-{num_epoch}"
 
         regression_canvas = RegressionPlotCanvas(title, "x", "y")
@@ -102,7 +102,7 @@ def regression_model_test():
 
     print("Regression Model Test: Loss History")
     ref = regression6
-    generator = uniform_data_generator(ref, (100, 1))
+    generator = uniform_data_generator(ref)
     cum_title = f"loss_history_epoch-{num_epoch}"
     cum_loss_canvas = LossHistoryPlotCanvas(cum_title, "iteration", "loss")
     for name, optimiser, loss in optimisers:

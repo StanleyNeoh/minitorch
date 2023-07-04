@@ -27,10 +27,11 @@ class PlotCanvas:
         self.queue.append((plot, kwargs))
     
     def build(self, path: str):
+        print("Building plot at '{}'".format(path))
         plt.clf()
         plt.title(self.title)
         plt.xlabel(self.xlabel)
-        plt.ylabel(self.xlabel)
+        plt.ylabel(self.ylabel)
         for plot, kwargs in self.queue:
             plt.plot(*self.transformer(plot), **kwargs)
         plt.legend()
