@@ -329,8 +329,6 @@ def autograd_test():
         FunctionChecker(lambda x, y: x / y, 2, name="x/y", randmaps=[uniform(-10.0, 10.0), uniform_exclude(-10.0, 10.0, [0.0])]),
         FunctionChecker(lambda x, y: x ** y, 2, name="x**y", randmaps=[uniform(-10.0, 10.0), uniform(-5.0, 5.0)]),
         FunctionChecker(lambda x, y: x @ y, 2, name="x@y", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
-        FunctionChecker(L.crossentropyloss, 2, name="CrossEntropyLoss", randmaps=[uniform(0.0, 1.0), uniform(0.0, 1.0)]),
-        FunctionChecker(L.kulldivergence, 2, name="KullDivergence", randmaps=[uniform(0.0, 1.0), uniform(0.0, 1.0)]),
         FunctionChecker(L.l1loss, 2, name="L1Loss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         FunctionChecker(L.l2loss, 2, name="L2Loss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),
         FunctionChecker(L.rmsloss, 2, name="RMSLoss", randmaps=[uniform(-10.0, 10.0), uniform(-10.0, 10.0)]),

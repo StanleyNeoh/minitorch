@@ -8,20 +8,20 @@ class V:
     A variable that can be used to build a computation graph and track gradient.
 
     Attributes:
-        - data (npt.NDArray): data of this variable
+        - data (npt.NDArray | np.float128): data of this variable
         - requires_grad (bool): whether to track gradient
-        - grad (npt.NDArray): gradient of this variable
+        - grad (npt.NDArray | np.float128): gradient of this variable
         - _backward (Optional[Callable[[], None]]): backward function of this variable
         - _deps (list[V]): dependencies of this variable
     """
     def __init__(
             self, 
-            data: DataType,
+            data: DataType, 
             requires_grad: bool = False,
             name: Optional[str] = None
             ) -> None:
         """
-        Initialize a variable from a numpy array.
+        Initialize a variable from a numpy array or number.
         Numpy array will be converted to float128.
 
         Args:
@@ -30,13 +30,17 @@ class V:
         Returns:
             None
         """
-        self.data: DataType
-        if isinstance(data, np.float128):
-            self.data = data 
-        else:
-            self.data = data.astype(np.float128)
         self.requires_grad = requires_grad
-        self.grad: np.ndarray = np.zeros_like(data, dtype=np.float128)
+        self.data: DataType
+        self.grad: DataType
+        if isinstance(data, np.float128):
+            self.data = data
+            self.grad = np.float128(0.0)
+        elif isinstance(data, np.ndarray):
+            self.data = data.astype(np.float128)
+            self.grad = np.zeros_like(data, dtype=np.float128)
+        else:
+            raise TypeError(f'{type(data)} is not supported as data type')
 
         # deps mean dependencies == variables that makes this variable
         self._backward: Optional[Callable[[], None]] = None
@@ -50,7 +54,7 @@ class V:
 
         If data is already a variable, return it.
 
-        If data is a float or int, convert it to numpy array of size 1 and convert it to a variable.
+        If data is a float or int, convert it to np.float128 and then convert it to a variable.
 
         If data is a list, convert it to a numpy array and then convert it to a variable.
 
@@ -62,20 +66,16 @@ class V:
         Returns:
             V: variable
         """
-        assert isinstance(x, InputClasses), f'Invalid data type: {type(x)}'
         if isinstance(x, V):
             return x
-
-        data: np.ndarray | np.float128
-        if isinstance(x, float) or isinstance(x, int):
-            data = np.float128(x)
         elif isinstance(x, list):
-            data = np.array(x)
+            return V(np.array(x), requires_grad=requires_grad, name=name)
+        elif isinstance(x, (int, float, np.float128)):
+            return V(np.float128(x), requires_grad=requires_grad, name=name)
         elif isinstance(x, np.ndarray):
-            data = x
-        else:
-            raise Exception('Invalid data type')
-        return V(data, requires_grad=requires_grad, name=name) 
+            return V(x, requires_grad=requires_grad, name=name)
+        else: 
+            raise TypeError('Invalid data type')
 
     @classmethod
     def ones(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
@@ -136,14 +136,14 @@ class V:
         """
         return V.of(np.random.uniform(low, high, size=shape), requires_grad=requires_grad, name=name)
 
-    def isscalar(self) -> bool:
+    def is_scalar_like(self) -> bool:
         """
-        Check if this variable is a scalar.
+        Check if this variable is a scalar like.
 
         Returns:
-            bool: whether this variable is a scalar
+            bool: whether this variable is a scalar like
         """
-        return isinstance(self.data, np.float128) 
+        return isinstance(self.data, np.float128)  or self.data.size == 1
 
     def zero_grad(self) -> None:
         """
@@ -157,20 +157,20 @@ class V:
 
     def item(self) -> float:
         """
-        Get the value of this variable as a scalar.
+        Get the value of this variable as a scalar like.
 
         Returns:
             np.float: value of this variable
         """
+        assert self.is_scalar_like(), 'variable must be scalar like to be converted to float'
         if isinstance(self.data, np.float128):
             return float(self.data)
-        return self.data.item()
+        return float(self.data.item())
 
     def add_to_grad(self, grad: np.ndarray) -> None:
         """
-        Add a gradient to this variable.
+        Add a gradient to this variable independent of require_grad.
         This is used to accumulate gradient from multiple sources.
-        If this variable does not require gradient, do nothing.
        
         A few cases to consider:
         * grad is broadcastable to self.data.shape
@@ -187,10 +187,9 @@ class V:
         Returns:
             None
         """
-        if self.requires_grad:
-            if grad.ndim > self.data.ndim:
-                grad = np.sum(grad, axis=tuple(range(grad.ndim - self.data.ndim)))
-            self.grad += grad
+        if grad.ndim > self.data.ndim:
+            grad = np.sum(grad, axis=tuple(range(grad.ndim - self.data.ndim)))
+        self.grad += grad
     
     def add_deps(self, vars: list[V]) -> None:
         """
@@ -222,8 +221,7 @@ class V:
         Returns:
             None
         """
-        if self.requires_grad:
-            self._backward = _backward
+        self._backward = _backward
     
     def backward(self, initial = 1.0) -> None:
         """
@@ -233,7 +231,7 @@ class V:
         Returns:
             None
         """
-        assert self.data.size == 1, 'Only scalar variable can be backpropagated' 
+        assert self.is_scalar_like(), 'Only scalar like variable can be backpropagated' 
         # Gradient of variable must be fully evaluated before it can update gradient of dependencies
         # This can be ensured by performing topological sort on the computation graph
         topoSort = []
@@ -266,16 +264,6 @@ class V:
         """
         return V(self.data.copy(), requires_grad=self.requires_grad)
 
-    def __repr__(self):
-        return 'V(data={}, grad={}, requires_grad={})'.format(
-            self.data, self.grad, self.requires_grad)
-
-    def __str__(self) -> str:
-        if self.requires_grad:
-            return 'var({})'.format(self.data)
-        else:
-            return 'con({})'.format(self.data)
-    
     def __neg__(self) -> V:
         """ 
         Negate this variable.
@@ -303,8 +291,10 @@ class V:
         data = self.data + v.data
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(out.grad)
-            v.add_to_grad(out.grad)
+            if self.requires_grad:
+                self.add_to_grad(out.grad)
+            if v.requires_grad:
+                v.add_to_grad(out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -321,8 +311,10 @@ class V:
         data = self.data * v.data
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(v.data * out.grad)
-            v.add_to_grad(self.data * out.grad)
+            if self.requires_grad:
+                self.add_to_grad(v.data * out.grad)
+            if v.requires_grad:
+                v.add_to_grad(self.data * out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -339,8 +331,10 @@ class V:
         data = self.data - v.data
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(out.grad)
-            v.add_to_grad(-out.grad)
+            if self.requires_grad:
+                self.add_to_grad(out.grad)
+            if v.requires_grad:
+                v.add_to_grad(-out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -357,8 +351,10 @@ class V:
         data = self.data / v.data
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(out.grad / v.data)
-            v.add_to_grad(-self.data / (v.data ** 2.0) * out.grad)
+            if self.requires_grad:
+                self.add_to_grad(out.grad / v.data)
+            if v.requires_grad:
+                v.add_to_grad(-self.data / (v.data ** 2.0) * out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -377,8 +373,10 @@ class V:
         data = np.power(base, v.data)
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(sign * v.data * np.power(base, v.data - 1.0) * out.grad)
-            v.add_to_grad(np.log(base) * data * out.grad)
+            if self.requires_grad:
+                self.add_to_grad(sign * v.data * np.power(base, v.data - 1.0) * out.grad)
+            if v.requires_grad:
+                v.add_to_grad(np.log(base) * data * out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -402,8 +400,10 @@ class V:
         data = self.data @ v.data
         out = V(data, requires_grad=requires_grad)
         def _backward():
-            self.add_to_grad(out.grad @ v.data.T )
-            v.add_to_grad(self.data.T @ out.grad)
+            if self.requires_grad:
+                self.add_to_grad(out.grad @ v.data.T)
+            if v.requires_grad:
+                v.add_to_grad(self.data.T @ out.grad)
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -431,5 +431,5 @@ class V:
         raise TypeError('Comparison requires operands to be of same type')
 
 InputClasses = (int, float, list, np.ndarray, V)
-InputType: TypeAlias = int | float | list | np.ndarray | V
+InputType: TypeAlias = int | float | np.float128 | list | np.ndarray | V
 DataType: TypeAlias = np.ndarray | np.float128

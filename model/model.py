@@ -119,7 +119,7 @@ class Model:
             float: Loss of the model.
         """
         if len(self.loss_history) == 0:
-            return np.inf
+            return float('inf') 
         back = self.loss_history[-window:]
         return sum(back) / len(back)
     

@@ -3,58 +3,6 @@ import numpy as np
 from .variable import V # type: ignore
 from .functions import F # type: ignore
 
-def crossentropyloss(output: V, target: V, axis=None, keepdims=False) -> V:
-    """
-    Cross entropy loss for a variable.
-    
-    Cross entropy loss is used for classification problems 
-    where the output is a probability distribution 
-    and the target is a one-hot vector.
-
-    A one-hot vector is a vector with all zeros except for one element which is 1.
-
-    Cross entropy loss is a specialised version of Kullback-Leibler divergence where
-    the entropy of the target distribution is 0 (i.e. the target distribution is a one-hot vector).
-
-    Zero cross entropy loss is only achieved when the target is a one-hot vector 
-    and the output matches exactly to that one-hot vector.
-
-    This is because a one-hot vector is interpreted as a random variable 
-    where we are completely certain about the outcome and the minimum number of bits
-    required to encode the outcome is 0.
-
-    **Note**: This implementation of cross entropy loss uses the natural logarithm. 
-
-    Args:
-        output (V): output variable
-        target (V): target variable
-    Returns:
-        V: loss variable
-    """
-    return -F.mean(target * F.log(output), axis=axis, keepdims=keepdims)
-
-def kulldivergence(output: V, target: V, axis=None, keepdims=False) -> V:
-    """
-    Kullback-Leibler divergence for a variable.
-
-    Kullback-Leibler divergence is used for classification problems where the output is a probability distribution
-    and the target is a probability distribution.
-
-    Kullback-Leibler divergence is the difference between the cross entropy loss and the entropy of the target distribution.
-
-    Kullback-Leibler can be thought of as a generalised cross entropy loss that can work with any target distribution
-    that does not have zero probability for any outcome.
-
-    **Note**: This implementation of cross entropy loss uses the natural logarithm. 
-
-    Args:
-        output (V): output variable
-        target (V): target variable
-    Returns:
-        V: loss variable
-    """
-    return F.mean(target * F.log(target / output), axis=axis, keepdims=keepdims)
-
 def l1loss(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     L1 loss for a variable.
@@ -126,9 +74,61 @@ class L:
         rmseloss (function): Root mean squared error loss
         huberloss (function): Huber loss
     """
-    crossentropyloss = crossentropyloss
-    kulldivergence = kulldivergence
     l1loss = l1loss
     l2loss = l2loss
     rmsloss = rmsloss
     huberloss = huberloss
+
+# Deprecated as not practical
+
+def _crossentropyloss(output: V, target: V, axis=None, keepdims=False) -> V:
+    """
+    Cross entropy loss for a variable.
+    
+    Cross entropy loss is used for classification problems 
+    where the output is a probability distribution 
+    and the target is a one-hot vector.
+
+    A one-hot vector is a vector with all zeros except for one element which is 1.
+
+    Cross entropy loss is a specialised version of Kullback-Leibler divergence where
+    the entropy of the target distribution is 0 (i.e. the target distribution is a one-hot vector).
+
+    Zero cross entropy loss is only achieved when the target is a one-hot vector 
+    and the output matches exactly to that one-hot vector.
+
+    This is because a one-hot vector is interpreted as a random variable 
+    where we are completely certain about the outcome and the minimum number of bits
+    required to encode the outcome is 0.
+
+    **Note**: This implementation of cross entropy loss uses the natural logarithm. 
+
+    Args:
+        output (V): output variable
+        target (V): target variable
+    Returns:
+        V: loss variable
+    """
+    return -F.mean(target * F.log(output), axis=axis, keepdims=keepdims)
+
+def _kulldivergence(output: V, target: V, axis=None, keepdims=False) -> V:
+    """
+    Kullback-Leibler divergence for a variable.
+
+    Kullback-Leibler divergence is used for classification problems where the output is a probability distribution
+    and the target is a probability distribution.
+
+    Kullback-Leibler divergence is the difference between the cross entropy loss and the entropy of the target distribution.
+
+    Kullback-Leibler can be thought of as a generalised cross entropy loss that can work with any target distribution
+    that does not have zero probability for any outcome.
+
+    **Note**: This implementation of cross entropy loss uses the natural logarithm. 
+
+    Args:
+        output (V): output variable
+        target (V): target variable
+    Returns:
+        V: loss variable
+    """
+    return F.mean(target * F.log(target / output), axis=axis, keepdims=keepdims)
