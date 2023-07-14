@@ -155,7 +155,7 @@ class V:
         if self.requires_grad:
             self.grad = np.zeros_like(self.data, dtype=np.float128)
 
-    def item(self) -> float:
+    def item(self) -> np.float128:
         """
         Get the value of this variable as a scalar like.
 
@@ -164,8 +164,8 @@ class V:
         """
         assert self.is_scalar_like(), 'variable must be scalar like to be converted to float'
         if isinstance(self.data, np.float128):
-            return float(self.data)
-        return float(self.data.item())
+            return self.data
+        return self.data.item()
 
     def add_to_grad(self, grad: np.ndarray) -> None:
         """
@@ -223,7 +223,7 @@ class V:
         """
         self._backward = _backward
     
-    def backward(self, initial = 1.0) -> None:
+    def backward(self, initial: float = 1.0) -> None:
         """
         Backpropagate gradient to dependencies.
         If this variable does not require gradient, do nothing.

@@ -3,6 +3,34 @@ import numpy as np
 from .variable import V # type: ignore
 from .functions import F # type: ignore
 
+def crossentropyloss(output: V, target_i: list[int], axis=None, keepdims=False) -> V:
+    """
+    Cross entropy loss for a variable.
+
+    output must be of the format (batch_size, num_classes) 
+    and target_i must be of the format (batch_size,) acting as indices for the target classes.
+
+    Args:
+        output (V): output variable
+        target_i (list[int]): target indices
+    
+    Returns:
+        V: loss variable
+    """
+    assert output.data.ndim == 2, "output must be of the format (batch_size, num_classes)"
+    assert len(target_i) == output.data.shape[0], "target_i must be of the format (batch_size,)"
+    num_batches = len(target_i)
+    require_grad = output.require_grad
+    est_prob = output.data[np.arange(num_batches), target_i]
+    data = -np.mean(np.log(est_prob))
+    loss = V(data, require_grad=require_grad)
+    def _backward() -> None:
+        if output.require_grad:
+            output.add_to_grad(-loss.grad / (num_batches * est_prob))
+    loss.set_backward(_backward)
+    loss.add_deps([output])
+    return loss
+
 def l1loss(output: V, target: V, axis=None, keepdims=False) -> V:
     """
     L1 loss for a variable.
@@ -74,6 +102,7 @@ class L:
         rmseloss (function): Root mean squared error loss
         huberloss (function): Huber loss
     """
+    crossentropyloss = crossentropyloss
     l1loss = l1loss
     l2loss = l2loss
     rmsloss = rmsloss
