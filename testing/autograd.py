@@ -6,7 +6,7 @@ from typing import Callable, Optional, Iterator
 
 from autograd import F, V, L
 
-from utils import uniform_ex_input_g, uniform_input_g
+from utils import uniform_ex_float_g, uniform_float_g, uniform_index_g
 
 
 class GradChecker:
@@ -42,59 +42,62 @@ class GradChecker:
         self.bound = bound
 
         # Test Statuses
-        self.all_passed: Optional[bool] = None
-        self.x: Optional[np.ndarray] = None
-        self.calgrads: Optional[np.ndarray] = None
-        self.expgrads: Optional[np.ndarray] = None
+        self.argseti: list[int] = []
+        self.argi: list[int] = []
+        self.arg: list[float] = []
+        self.calgrads: list[float] = []
+        self.expgrads: list[float] = []
         self.results: Optional[pd.DataFrame] = None
+        self.all_passed: Optional[bool] = None
 
-    def evaluate(self, xs: tuple[V], initial=2.0) -> bool:
+    def evaluate(self, args: tuple[V], initial=2.0) -> bool:
         """
         Evaluate the model with the given inputs and check the gradients.
         Small adjustments are made to the inputs to approximate the actual gradients
         which are then compared with the calculated gradients.
-        Populates the following attributes of the class.
-        * all_passed
-        * x
-        * calgrads
-        * expgrads
-        * results
 
         Args:
-            xs (list[V]): inputs to evaluate the model with
+            args (list[V]): inputs to evaluate the model with
             initial (float, optional): initial gradient. Defaults to 2.0.
         Returns:
             bool: whether all tests passed
         """
-        out = self.model(*xs)
+        out = self.model(*args)
         out.backward(initial=initial)
         refy = out.item()
 
         # Obtaining Gradients
-        npxs = np.stack([x.data for x in xs])
-        shape = npxs.shape
-        self.x = npxs.flatten()
-        self.calgrads = np.stack([x.grad / initial for x in xs]).flatten()
-        grads = []
-        assert self.x is not None, "Assignment Error"
-        for i in range(self.x.size):
-            testx = self.x.copy()
-            testx[i] += self.increment
-            testx = testx.reshape(shape)
-            x = [V.of(r, requires_grad=True) for r in testx]  # Iterating over axis 0
-            y = self.model(*x).item()
-            grads.append((y - refy) / self.increment)
-        self.expgrads = np.array(grads)
+        self.argseti.clear()
+        self.argi.clear()
+        self.arg.clear()
+        self.calgrads.clear()
+        self.expgrads.clear()
+        for argi, arg in enumerate(args):
+            argseti = 0
+            if not isinstance(arg, V) or not arg.requires_grad:
+                continue
+            nparg = arg.data
+            ogarg = nparg.flatten()
+            self.calgrads.extend(list(arg.grad.flatten() / initial))
+            for i in range(ogarg.size):
+                testarg = ogarg.copy()
+                testarg[i] += self.increment
+                testarg = testarg.reshape(nparg.shape)
+                x = args[:argi] + [V.of(testarg, requires_grad=True)] + args[argi + 1 :]
+                y = self.model(*x).item()
+
+                self.argseti.append(argseti)
+                argseti += 1
+                self.argi.append(argi)
+                self.arg.append(ogarg[i])
+                self.expgrads.append((y - refy) / self.increment)
 
         # Comparing Gradients
-        assert (
-            self.expgrads is not None
-            and self.calgrads is not None
-            and self.x is not None
-        ), "Assignment Error"
         self.results = pd.DataFrame(
             {
-                "x": self.x,
+                "argseti": self.argseti,
+                "argi": self.argi,
+                "arg": self.arg,
                 "cal": self.calgrads,
                 "exp": self.expgrads,
             },
@@ -190,80 +193,85 @@ def autograd_test():
         return F.where(cond > 0.5, F.sin(x1), F.cos(x2))
 
     functionCheckers = [
-        FunctionChecker(F.sum, [uniform_input_g(-10.0, 10.0)], "Sum"),
-        FunctionChecker(F.mean, [uniform_input_g(-10.0, 10.0)], "Mean"),
-        FunctionChecker(F.rms, [uniform_input_g(-10.0, 10.0)], "RMS"),
-        FunctionChecker(F.softmax, [uniform_input_g(-10.0, 10.0)], "Softmax"),
-        FunctionChecker(F.abs, [uniform_input_g(-10.0, 10.0)], "Abs"),
-        FunctionChecker(F.sin, [uniform_input_g(-10.0, 10.0)], "Sin"),
-        FunctionChecker(F.cos, [uniform_input_g(-10.0, 10.0)], "Cos"),
-        FunctionChecker(F.tan, [uniform_input_g(-10.0, 10.0)], "Tan"),
-        FunctionChecker(F.relu, [uniform_input_g(-10.0, 10.0)], "ReLU"),
-        FunctionChecker(F.sinh, [uniform_input_g(-10.0, 10.0)], "Sinh"),
-        FunctionChecker(F.cosh, [uniform_input_g(-10.0, 10.0)], "Cosh"),
-        FunctionChecker(F.tanh, [uniform_input_g(-10.0, 10.0)], "Tanh"),
-        FunctionChecker(F.log, [uniform_ex_input_g(-10.0, 10.0, [0.0])], "Log"),
-        FunctionChecker(F.elu, [uniform_input_g(-10.0, 10.0)], "ELU"),
-        FunctionChecker(F.leakyrelu, [uniform_input_g(-10.0, 10.0)], "LeakyReLU"),
+        FunctionChecker(F.sum, [uniform_float_g(-10.0, 10.0)], "Sum"),
+        FunctionChecker(F.mean, [uniform_float_g(-10.0, 10.0)], "Mean"),
+        FunctionChecker(F.rms, [uniform_float_g(-10.0, 10.0)], "RMS"),
+        FunctionChecker(F.softmax, [uniform_float_g(-10.0, 10.0)], "Softmax"),
+        FunctionChecker(F.abs, [uniform_float_g(-10.0, 10.0)], "Abs"),
+        FunctionChecker(F.sin, [uniform_float_g(-10.0, 10.0)], "Sin"),
+        FunctionChecker(F.cos, [uniform_float_g(-10.0, 10.0)], "Cos"),
+        FunctionChecker(F.tan, [uniform_float_g(-10.0, 10.0)], "Tan"),
+        FunctionChecker(F.relu, [uniform_float_g(-10.0, 10.0)], "ReLU"),
+        FunctionChecker(F.sinh, [uniform_float_g(-10.0, 10.0)], "Sinh"),
+        FunctionChecker(F.cosh, [uniform_float_g(-10.0, 10.0)], "Cosh"),
+        FunctionChecker(F.tanh, [uniform_float_g(-10.0, 10.0)], "Tanh"),
+        FunctionChecker(F.log, [uniform_ex_float_g(-10.0, 10.0, [0.0])], "Log"),
+        FunctionChecker(F.elu, [uniform_float_g(-10.0, 10.0)], "ELU"),
+        FunctionChecker(F.leakyrelu, [uniform_float_g(-10.0, 10.0)], "LeakyReLU"),
         FunctionChecker(
             piecewise,
             [
-                uniform_input_g(0.0, 1.0),
-                uniform_input_g(-10.0, 10.0),
-                uniform_input_g(-10.0, 10.0),
+                uniform_float_g(0.0, 1.0),
+                uniform_float_g(-10.0, 10.0),
+                uniform_float_g(-10.0, 10.0),
             ],
             "Piecewise",
         ),
-        FunctionChecker(lambda x: -x, [uniform_input_g(-10.0, 10.0)], "Neg"),
+        FunctionChecker(lambda x: -x, [uniform_float_g(-10.0, 10.0)], "Neg"),
         FunctionChecker(
             lambda x, y: x + y,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "x+y",
         ),
         FunctionChecker(
             lambda x, y: x - y,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "x-y",
         ),
         FunctionChecker(
             lambda x, y: x * y,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "x*y",
         ),
         FunctionChecker(
             lambda x, y: x / y,
-            [uniform_input_g(-10.0, 10.0), uniform_ex_input_g(-10.0, 10.0, [0.0])],
+            [uniform_float_g(-10.0, 10.0), uniform_ex_float_g(-10.0, 10.0, [0.0])],
             "x/y",
         ),
         FunctionChecker(
             lambda x, y: x**y,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "x**y",
         ),
         FunctionChecker(
             lambda x, y: x @ y,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "x@y",
         ),
         FunctionChecker(
             L.l1loss,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "L1Loss",
         ),
         FunctionChecker(
             L.l2loss,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "L2Loss",
         ),
         FunctionChecker(
             L.rmsloss,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "RMSLoss",
         ),
         FunctionChecker(
             L.huberloss,
-            [uniform_input_g(-10.0, 10.0), uniform_input_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
             "HuberLoss",
+        ),
+        FunctionChecker(
+            L.crossentropyloss,
+            [uniform_float_g(0.0, 1.0), uniform_index_g(5)],
+            "CrossEntropyLoss",
         ),
     ]
     failed = []

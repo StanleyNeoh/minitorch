@@ -15,12 +15,12 @@ def uniform_data_g(
 
     Args:
         reference (Callable[[V], V]): reference function to generate output data
-        shape (tuple[int, ...]): shape of the input data
+        shape (tuple[int, ...]): shape of the float data
         start (float): start of the uniform distribution
         end (float): end of the uniform distribution
-    
+
     Returns:
-        Iterator[tuple[V, V]]: Iterator that gives input and output data
+        Iterator[tuple[V, V]]: Iterator that gives float and output data
     """
     while True:
         x = V.uniform(shape, start, end)
@@ -28,37 +28,38 @@ def uniform_data_g(
         yield x, y
 
 
-def uniform_input_g(
-    start: float, 
+def uniform_float_g(
+    start: float,
     end: float,
-    shape: tuple[int, ...]=(5, 5),
+    shape: tuple[int, ...] = (5, 5),
     requires_grad: bool = True,
 ) -> Iterator[V]:
     """
-    Generate uniform input data for testing.
+    Generate uniform float data for testing.
 
     Args:
         start (float): start of the uniform distribution
         end (float): end of the uniform distribution
-        shape (tuple[int, ...]): shape of the input data. Defaults to (5, 5).
-        requires_grad (bool): whether the input data requires gradient. Defaults to True.
+        shape (tuple[int, ...]): shape of the float data. Defaults to (5, 5).
+        requires_grad (bool): whether the float data requires gradient. Defaults to True.
 
     Returns:
-        Iterator[V]: Iterator that gives input data
+        Iterator[V]: Iterator that gives float data
     """
     while True:
         yield V.uniform(shape, start, end, requires_grad=requires_grad)
 
-def uniform_ex_input_g(
+
+def uniform_ex_float_g(
     start: float,
     end: float,
     exclude: list[float],
-    shape: tuple[int, ...]=(5, 5),
+    shape: tuple[int, ...] = (5, 5),
     tolerance: float = 1e-2,
     requires_grad: bool = True,
 ) -> Iterator[V]:
     """
-    Generate uniform input data for testing. 
+    Generate uniform float data for testing.
     The generated data is not in the exclude list
     with some tolerance.
 
@@ -66,19 +67,37 @@ def uniform_ex_input_g(
         start (float): start of the uniform distribution
         end (float): end of the uniform distribution
         exclude (list[float]): list of values to exclude
-        shape (tuple[int, ...]): shape of the input data. Defaults to (5, 5).
+        shape (tuple[int, ...]): shape of the float data. Defaults to (5, 5).
         tolerance (float): tolerance for excluding values. Defaults to 1e-2.
-        requires_grad (bool): whether the input data requires gradient. Defaults to True.
+        requires_grad (bool): whether the float data requires gradient. Defaults to True.
 
     Returns:
-        Iterator[V]: Iterator that gives input data
+        Iterator[V]: Iterator that gives float data
     """
     while True:
         x = V.uniform(shape, start, end, requires_grad=requires_grad)
-        passed = True 
+        passed = True
         for e in exclude:
             if np.any(abs(x.data - e) < tolerance):
                 passed = False
                 break
         if passed:
             yield x
+
+
+def uniform_index_g(
+    n: int,
+    num_batches: int = 5,
+) -> Iterator[np.ndarray]:
+    """
+    Generate uniform index data for testing.
+
+    Args:
+        n (int): number of indices
+        num_batches (int): number of batches. Defaults to 5.
+
+    Returns:
+        Iterator[np.ndarray]: Iterator that gives index data
+    """
+    while True:
+        yield np.random.randint(0, n, size=(num_batches,))
