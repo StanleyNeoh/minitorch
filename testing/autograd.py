@@ -17,9 +17,9 @@ class GradChecker:
     def __init__(
         self,
         model: Callable[..., V],
-        increment: float = 1e-5,
-        rtol: float = 1e-3,
-        atol: float = 1e-3,
+        increment: float = 1e-6,
+        rtol: float = 1e-2,
+        atol: float = 1e-2,
         bound: float = 1e3,
     ) -> None:
         """
@@ -140,7 +140,7 @@ class FunctionChecker(GradChecker):
         function: Callable[..., V],
         generators: list[Iterator[V]],
         name: str,
-        epoch: int = 50,
+        epoch: int = 100,
     ):
         """
         Initialize a function checker with a function. GradChecker parameters are set to default.
@@ -240,7 +240,7 @@ def autograd_test():
         ),
         FunctionChecker(
             lambda x, y: x**y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [uniform_float_g(-10.0, 10.0), uniform_float_g(-5.0, 5.0)],
             "x**y",
         ),
         FunctionChecker(

@@ -82,10 +82,13 @@ def crossentropyloss(output: V, target_i: list[int], axis=None, keepdims=False) 
     requires_grad = output.requires_grad
     est_prob = output.data[np.arange(num_batches), target_i]
     data = -np.mean(np.log(est_prob))
-    loss = V(data, requires_grad=requires_grad)
+    loss = V.of(data, requires_grad=requires_grad)
     def _backward() -> None:
         if output.requires_grad:
-            output.add_to_grad(-loss.grad / (num_batches * est_prob))
+            slicer = (np.arange(num_batches), target_i)
+            masked = np.zeros(output.data.shape)
+            masked[*slicer] = (-1.0 / (num_batches * output.data))[*slicer]
+            output.add_to_grad(masked * loss.grad)
     loss.set_backward(_backward)
     loss.add_deps([output])
     return loss

@@ -3,6 +3,7 @@ from typing import Callable, TypeAlias, Optional
 
 import numpy as np
 
+
 class V:
     """
     A variable that can be used to build a computation graph and track gradient.
@@ -14,12 +15,12 @@ class V:
         - _backward (Optional[Callable[[], None]]): backward function of this variable
         - _deps (list[V]): dependencies of this variable
     """
+
     def __init__(
-            self, 
-            data: DataType, 
-            requires_grad: bool = False,
-            name: Optional[str] = None
-            ) -> None:
+        self,
+        data: DataType,
+        requires_grad: bool = False,
+    ) -> None:
         """
         Initialize a variable from a numpy array or number.
         Numpy array will be converted to float128.
@@ -40,15 +41,14 @@ class V:
             self.data = data.astype(np.float128)
             self.grad = np.zeros_like(data, dtype=np.float128)
         else:
-            raise TypeError(f'{type(data)} is not supported as data type')
+            raise TypeError(f"{type(data)} is not supported as data type")
 
         # deps mean dependencies == variables that makes this variable
         self._backward: Optional[Callable[[], None]] = None
         self._deps: list[V] = []
-        self.name = name
 
     @classmethod
-    def of(cls, x: InputType, requires_grad: bool = False, name: Optional[str] = None) -> V:
+    def of(cls, x: InputType, requires_grad: bool = False) -> V:
         """
         Create a variable from a data.
 
@@ -69,16 +69,16 @@ class V:
         if isinstance(x, V):
             return x
         elif isinstance(x, list):
-            return V(np.array(x), requires_grad=requires_grad, name=name)
+            return V(np.array(x), requires_grad=requires_grad)
         elif isinstance(x, (int, float, np.float128)):
-            return V(np.float128(x), requires_grad=requires_grad, name=name)
+            return V(np.float128(x), requires_grad=requires_grad)
         elif isinstance(x, np.ndarray):
-            return V(x, requires_grad=requires_grad, name=name)
-        else: 
-            raise TypeError('Invalid data type')
+            return V(x, requires_grad=requires_grad)
+        else:
+            raise TypeError("Invalid data type")
 
     @classmethod
-    def ones(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+    def ones(cls, shape: tuple[int, ...], requires_grad: bool = False) -> V:
         """
         Create a variable of ones.
 
@@ -88,10 +88,10 @@ class V:
         Returns:
             V: variable
         """
-        return V.of(np.ones(shape), requires_grad=requires_grad, name=name)
-    
+        return V.of(np.ones(shape), requires_grad=requires_grad)
+
     @classmethod
-    def zeros(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+    def zeros(cls, shape: tuple[int, ...], requires_grad: bool = False) -> V:
         """
         Create a variable of zeros.
 
@@ -101,10 +101,10 @@ class V:
         Returns:
             V: variable
         """
-        return V.of(np.zeros(shape), requires_grad=requires_grad, name=name)
+        return V.of(np.zeros(shape), requires_grad=requires_grad)
 
     @classmethod
-    def randn(cls, shape: tuple[int, ...], requires_grad: bool =False, name: Optional[str] =None) -> V:
+    def randn(cls, shape: tuple[int, ...], requires_grad: bool = False) -> V:
         """
         Create a variable of random values from standard normal distribution.
 
@@ -114,15 +114,16 @@ class V:
         Returns:
             V: variable
         """
-        return V.of(np.random.randn(*shape), requires_grad=requires_grad, name=name)
-    
+        return V.of(np.random.randn(*shape), requires_grad=requires_grad)
+
     @classmethod
-    def uniform(cls, 
-                shape: tuple[int, ...], 
-                low: float =0.0,
-                high: float =1.0,
-                requires_grad: bool =False, 
-                name: Optional[str] =None) -> V:
+    def uniform(
+        cls,
+        shape: tuple[int, ...],
+        low: float = 0.0,
+        high: float = 1.0,
+        requires_grad: bool = False,
+    ) -> V:
         """
         Create a variable of random values from uniform distribution.
 
@@ -134,7 +135,10 @@ class V:
         Returns:
             V: variable
         """
-        return V.of(np.random.uniform(low, high, size=shape), requires_grad=requires_grad, name=name)
+        return V.of(
+            np.random.uniform(low, high, size=shape),
+            requires_grad=requires_grad,
+        )
 
     def is_scalar_like(self) -> bool:
         """
@@ -143,12 +147,12 @@ class V:
         Returns:
             bool: whether this variable is a scalar like
         """
-        return isinstance(self.data, np.float128)  or self.data.size == 1
+        return isinstance(self.data, np.float128) or self.data.size == 1
 
     def zero_grad(self) -> None:
         """
         Zero gradient of this variable.
-        
+
         Returns:
             None
         """
@@ -162,7 +166,9 @@ class V:
         Returns:
             np.float: value of this variable
         """
-        assert self.is_scalar_like(), 'variable must be scalar like to be converted to float'
+        assert (
+            self.is_scalar_like()
+        ), "variable must be scalar like to be converted to float"
         if isinstance(self.data, np.float128):
             return self.data
         return self.data.item()
@@ -171,7 +177,7 @@ class V:
         """
         Add a gradient to this variable independent of require_grad.
         This is used to accumulate gradient from multiple sources.
-       
+
         A few cases to consider:
         * grad is broadcastable to self.data.shape
         * self.data.shape is broadcastable to grad.shape
@@ -190,7 +196,7 @@ class V:
         if grad.ndim > self.data.ndim:
             grad = np.sum(grad, axis=tuple(range(grad.ndim - self.data.ndim)))
         self.grad += grad
-    
+
     def add_deps(self, vars: list[V]) -> None:
         """
         Add dependencies to this variable.
@@ -207,7 +213,7 @@ class V:
         for v in vars:
             if v.requires_grad:
                 self._deps.append(v)
-    
+
     def set_backward(self, _backward: Callable[[], None]) -> None:
         """
         Set backward function of this variable.
@@ -222,7 +228,7 @@ class V:
             None
         """
         self._backward = _backward
-    
+
     def backward(self, initial: float = 1.0) -> None:
         """
         Backpropagate gradient to dependencies.
@@ -231,15 +237,17 @@ class V:
         Returns:
             None
         """
-        assert self.is_scalar_like(), 'Only scalar like variable can be backpropagated' 
+        assert self.is_scalar_like(), "Only scalar like variable can be backpropagated"
         # Gradient of variable must be fully evaluated before it can update gradient of dependencies
         # This can be ensured by performing topological sort on the computation graph
         topoSort = []
+
         def topo(var):
             for back in var._deps:
                 topo(back)
             var.zero_grad()
             topoSort.append(var)
+
         topo(self)
         self.grad = np.full_like(self.data, initial, dtype=np.float128)
         for var in topoSort[::-1]:
@@ -254,7 +262,7 @@ class V:
             tuple[int, ...]: shape of data
         """
         return self.data.shape
-    
+
     def copy(self) -> V:
         """
         Create a copy of this variable.
@@ -265,7 +273,7 @@ class V:
         return V(self.data.copy(), requires_grad=self.requires_grad)
 
     def __neg__(self) -> V:
-        """ 
+        """
         Negate this variable.
 
         Dx -x = -1
@@ -273,8 +281,10 @@ class V:
         requires_grad = self.requires_grad
         data = -self.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             self.add_to_grad(-out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self])
         return out
@@ -282,19 +292,21 @@ class V:
     def __add__(self, other: InputType) -> V:
         """
         Add this variable with another float, int, list, numpy array or variable.
-        
+
         Dx x+y = 1
         Dy x+y = 1
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data + v.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
                 self.add_to_grad(out.grad)
             if v.requires_grad:
                 v.add_to_grad(out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -306,19 +318,21 @@ class V:
         Dx x*y = y
         Dy x*y = x
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data * v.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
                 self.add_to_grad(v.data * out.grad)
             if v.requires_grad:
                 v.add_to_grad(self.data * out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
-    
+
     def __sub__(self, other: InputType) -> V:
         """
         Subtract this variable with another float, int, list, numpy array or variable.
@@ -326,15 +340,17 @@ class V:
         Dx x-y = 1
         Dy x-y = -1
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data - v.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
                 self.add_to_grad(out.grad)
             if v.requires_grad:
                 v.add_to_grad(-out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -346,37 +362,43 @@ class V:
         Dx x/y = 1/y
         Dy x/y = -x/y^2
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
         data = self.data / v.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
                 self.add_to_grad(out.grad / v.data)
             if v.requires_grad:
-                v.add_to_grad(-self.data / (v.data ** 2.0) * out.grad)
+                v.add_to_grad(-self.data / (v.data**2.0) * out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
-    
+
     def __pow__(self, other: InputType) -> V:
         """
         Raise this absolute of this variable to the power of another float, int, list, numpy array or variable.
 
-        Dx |x|^y = (x/|x|) * y * |x|^(y-1) 
+        Dx |x|^y = (x/|x|) * y * |x|^(y-1)
         Dy |x|^y = log(|x|) * |x|^y
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
         base = np.abs(self.data)
         sign = np.sign(self.data)
         data = np.power(base, v.data)
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
-                self.add_to_grad(sign * v.data * np.power(base, v.data - 1.0) * out.grad)
+                self.add_to_grad(
+                    sign * v.data * np.power(base, v.data - 1.0) * out.grad
+                )
             if v.requires_grad:
                 v.add_to_grad(np.log(base) * data * out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
@@ -392,43 +414,58 @@ class V:
         Dx x@y = y
         Dy x@y = x
         """
-        v = V.of(other) 
+        v = V.of(other)
         requires_grad = self.requires_grad or v.requires_grad
-        assert isinstance(self.data, np.ndarray), 'Matrix multiplication require operands to be numpy arrays'
-        assert isinstance(v.data, np.ndarray), 'Matrix multiplication require operands to be numpy arrays'
+        assert isinstance(
+            self.data, np.ndarray
+        ), "Matrix multiplication require operands to be numpy arrays"
+        assert isinstance(
+            v.data, np.ndarray
+        ), "Matrix multiplication require operands to be numpy arrays"
 
         data = self.data @ v.data
         out = V(data, requires_grad=requires_grad)
+
         def _backward():
             if self.requires_grad:
                 self.add_to_grad(out.grad @ v.data.T)
             if v.requires_grad:
                 v.add_to_grad(self.data.T @ out.grad)
+
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
 
     def __lt__(self, other: object) -> np.ndarray | np.bool_:
-        assert isinstance(other, InputClasses), 'Comparison requires operands to be int, float, list, numpy array or variable'
+        assert isinstance(
+            other, InputClasses
+        ), "Comparison requires operands to be int, float, list, numpy array or variable"
         if not isinstance(other, V):
             return self.data < other
         elif isinstance(self.data, np.ndarray) and isinstance(other.data, np.ndarray):
-            assert self.data.shape == other.data.shape, 'Comparison requires operands to have the same shape'
+            assert (
+                self.data.shape == other.data.shape
+            ), "Comparison requires operands to have the same shape"
             return self.data < other.data
         elif isinstance(self.data, np.float128) and isinstance(other.data, np.float128):
             return self.data < other.data
-        raise TypeError('Comparison requires operands to be of same type')
+        raise TypeError("Comparison requires operands to be of same type")
 
     def __gt__(self, other: object) -> np.ndarray | np.bool_:
-        assert isinstance(other, InputClasses), 'Comparison requires operands to be int, float, list, numpy array or variable'
+        assert isinstance(
+            other, InputClasses
+        ), "Comparison requires operands to be int, float, list, numpy array or variable"
         if not isinstance(other, V):
             return self.data > other
         elif isinstance(self.data, np.ndarray) and isinstance(other.data, np.ndarray):
-            assert self.data.shape == other.data.shape, 'Comparison requires operands to have the same shape'
+            assert (
+                self.data.shape == other.data.shape
+            ), "Comparison requires operands to have the same shape"
             return self.data > other.data
         elif isinstance(self.data, np.float128) and isinstance(other.data, np.float128):
             return self.data > other.data
-        raise TypeError('Comparison requires operands to be of same type')
+        raise TypeError("Comparison requires operands to be of same type")
+
 
 InputClasses = (int, float, list, np.ndarray, V)
 InputType: TypeAlias = int | float | np.float128 | list | np.ndarray | V
