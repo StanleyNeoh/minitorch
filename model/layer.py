@@ -29,12 +29,12 @@ class Layer:
         """
         raise NotImplementedError
     
-    def copy(self, complete: bool = True):
+    def copy(self, reinitialise: bool = False):
         """
         Copy the layer.
     
         Args:
-            complete (bool, optional): Whether to copy the parameters of the layer. Defaults to True.
+            reinitialise (bool, optional): Whether to reinitialise the parameters of the layer. Defaults to False.
 
         Returns:
             Layer: Copy of the layer.
@@ -93,14 +93,17 @@ class Sequential(Layer):
             parameters += layer.parameters()
         return parameters
 
-    def copy(self, complete: bool=True) -> Layer:
+    def copy(self, reinitialise: bool=False) -> Layer:
         """
         Copy the sequential layer.
+
+        Args:
+            reinitialise (bool, optional): Whether to reinitialise the parameters of the layer. Defaults to False.
 
         Returns:
             Layer: Copy of the sequential layer.
         """
-        return Sequential(*[layer.copy(complete) for layer in self.layers])
+        return Sequential(*[layer.copy(reinitialise) for layer in self.layers])
     
 class Linear(Layer):
     """
@@ -158,20 +161,20 @@ class Linear(Layer):
         """
         return [self.W, self.b]
     
-    def copy(self, complete: bool=True) -> Layer:
+    def copy(self, reinitialise: bool=False) -> Layer:
         """
         Copy the linear layer.
 
         Args:
-            complete (bool, optional): Whether to copy the parameters of the layer. Defaults to True.
+            reinitialise (bool, optional): Whether to reinitialise the parameters of the layer. Defaults to False.
 
         Returns:
             Layer: Copy of the linear layer.
         """
-        if complete:
-            return Linear(self.in_features, self.out_features, self.W.copy(), self.b.copy())
-        else:
+        if reinitialise:
             return Linear(self.in_features, self.out_features)
+        else:
+            return Linear(self.in_features, self.out_features, self.W.copy(), self.b.copy())
         
 class ReLU(Layer):
     def forward(self, input) -> V:
@@ -196,12 +199,12 @@ class ReLU(Layer):
         """
         return []
     
-    def copy(self, complete: bool=True) -> Layer:
+    def copy(self, reinitialise: bool=False) -> Layer:
         """
         Copy the ReLU layer.
 
         Args:
-            complete (bool, optional): Whether to copy the parameters of the layer. Defaults to True.
+            reinitialise (bool, optional): This parameter is ignored. Defaults to False.
             
         Returns:
             Layer: Copy of the ReLU layer.
@@ -231,12 +234,12 @@ class Sigmoid(Layer):
         """
         return []
     
-    def copy(self, complete: bool=True) -> Layer:
+    def copy(self, reinitialise: bool=False) -> Layer:
         """
         Copy the Sigmoid layer.
 
         Args:
-            complete (bool, optional): Whether to copy the parameters of the layer. Defaults to True.
+            reinitialise (bool, optional): This parameter is ignored. Defaults to False.
             
         Returns:
             Layer: Copy of the Sigmoid layer.
