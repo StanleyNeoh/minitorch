@@ -6,7 +6,7 @@ from typing import Callable, Optional, Iterator
 
 from autograd import F, V, L
 
-from utils import uniform_ex_float_g, uniform_float_g, uniform_index_g
+from utils import gen_float_V, gen_float_ex_V, gen_index_NP 
 
 
 class GradChecker:
@@ -193,84 +193,84 @@ def autograd_test():
         return F.where(cond > 0.5, F.sin(x1), F.cos(x2))
 
     functionCheckers = [
-        FunctionChecker(F.sum, [uniform_float_g(-10.0, 10.0)], "Sum"),
-        FunctionChecker(F.mean, [uniform_float_g(-10.0, 10.0)], "Mean"),
-        FunctionChecker(F.rms, [uniform_float_g(-10.0, 10.0)], "RMS"),
-        FunctionChecker(F.softmax, [uniform_float_g(-10.0, 10.0)], "Softmax"),
-        FunctionChecker(F.abs, [uniform_float_g(-10.0, 10.0)], "Abs"),
-        FunctionChecker(F.sin, [uniform_float_g(-10.0, 10.0)], "Sin"),
-        FunctionChecker(F.cos, [uniform_float_g(-10.0, 10.0)], "Cos"),
-        FunctionChecker(F.tan, [uniform_float_g(-10.0, 10.0)], "Tan"),
-        FunctionChecker(F.relu, [uniform_float_g(-10.0, 10.0)], "ReLU"),
-        FunctionChecker(F.sinh, [uniform_float_g(-10.0, 10.0)], "Sinh"),
-        FunctionChecker(F.cosh, [uniform_float_g(-10.0, 10.0)], "Cosh"),
-        FunctionChecker(F.tanh, [uniform_float_g(-10.0, 10.0)], "Tanh"),
-        FunctionChecker(F.log, [uniform_ex_float_g(-10.0, 10.0, [0.0])], "Log"),
-        FunctionChecker(F.elu, [uniform_float_g(-10.0, 10.0)], "ELU"),
-        FunctionChecker(F.leakyrelu, [uniform_float_g(-10.0, 10.0)], "LeakyReLU"),
+        FunctionChecker(F.sum, [gen_float_V(-10.0, 10.0)], "Sum"),
+        FunctionChecker(F.mean, [gen_float_V(-10.0, 10.0)], "Mean"),
+        FunctionChecker(F.rms, [gen_float_V(-10.0, 10.0)], "RMS"),
+        FunctionChecker(F.softmax, [gen_float_V(-10.0, 10.0)], "Softmax"),
+        FunctionChecker(F.abs, [gen_float_V(-10.0, 10.0)], "Abs"),
+        FunctionChecker(F.sin, [gen_float_V(-10.0, 10.0)], "Sin"),
+        FunctionChecker(F.cos, [gen_float_V(-10.0, 10.0)], "Cos"),
+        FunctionChecker(F.tan, [gen_float_V(-10.0, 10.0)], "Tan"),
+        FunctionChecker(F.relu, [gen_float_V(-10.0, 10.0)], "ReLU"),
+        FunctionChecker(F.sinh, [gen_float_V(-10.0, 10.0)], "Sinh"),
+        FunctionChecker(F.cosh, [gen_float_V(-10.0, 10.0)], "Cosh"),
+        FunctionChecker(F.tanh, [gen_float_V(-10.0, 10.0)], "Tanh"),
+        FunctionChecker(F.log, [gen_float_ex_V(-10.0, 10.0, [0.0])], "Log"),
+        FunctionChecker(F.elu, [gen_float_V(-10.0, 10.0)], "ELU"),
+        FunctionChecker(F.leakyrelu, [gen_float_V(-10.0, 10.0)], "LeakyReLU"),
         FunctionChecker(
             piecewise,
             [
-                uniform_float_g(0.0, 1.0),
-                uniform_float_g(-10.0, 10.0),
-                uniform_float_g(-10.0, 10.0),
+                gen_float_V(0.0, 1.0),
+                gen_float_V(-10.0, 10.0),
+                gen_float_V(-10.0, 10.0),
             ],
             "Piecewise",
         ),
-        FunctionChecker(lambda x: -x, [uniform_float_g(-10.0, 10.0)], "Neg"),
+        FunctionChecker(lambda x: -x, [gen_float_V(-10.0, 10.0)], "-x"),
         FunctionChecker(
             lambda x, y: x + y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0)],
             "x+y",
         ),
         FunctionChecker(
             lambda x, y: x - y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0)],
             "x-y",
         ),
         FunctionChecker(
             lambda x, y: x * y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0)],
             "x*y",
         ),
         FunctionChecker(
             lambda x, y: x / y,
-            [uniform_float_g(-10.0, 10.0), uniform_ex_float_g(-10.0, 10.0, [0.0])],
+            [gen_float_V(-10.0, 10.0), gen_float_ex_V(-10.0, 10.0, [0.0])],
             "x/y",
         ),
         FunctionChecker(
             lambda x, y: x**y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-5.0, 5.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-5.0, 5.0)],
             "x**y",
         ),
         FunctionChecker(
             lambda x, y: x @ y,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0)],
             "x@y",
         ),
         FunctionChecker(
             L.l1loss,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0, requires_grad=False)],
             "L1Loss",
         ),
         FunctionChecker(
             L.l2loss,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0, requires_grad=False)],
             "L2Loss",
         ),
         FunctionChecker(
             L.rmsloss,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0, requires_grad=False)],
             "RMSLoss",
         ),
         FunctionChecker(
             L.huberloss,
-            [uniform_float_g(-10.0, 10.0), uniform_float_g(-10.0, 10.0)],
+            [gen_float_V(-10.0, 10.0), gen_float_V(-10.0, 10.0, requires_grad=False)],
             "HuberLoss",
         ),
         FunctionChecker(
             L.crossentropyloss,
-            [uniform_float_g(0.0, 1.0), uniform_index_g(5)],
+            [gen_float_V(0.0, 1.0), gen_index_NP(5)],
             "CrossEntropyLoss",
         ),
     ]
