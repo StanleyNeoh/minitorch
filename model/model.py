@@ -65,7 +65,7 @@ class Model:
         self.loss = loss
 
         # Statistics
-        self.loss_history: list[float] = []
+        self.loss_history: list[np.float128] = []
         self.training_time = 0.0
 
     def copy(self, reinitialise: bool = True) -> Model:
@@ -120,7 +120,7 @@ class Model:
         self.training_time += time.time() - time_start
 
     # Statistics methods
-    def get_loss(self, window=100) -> float:
+    def get_loss(self, window=100) -> np.float128:
         """
         Get the loss of the model.
 
@@ -131,9 +131,9 @@ class Model:
             float: Loss of the model.
         """
         if len(self.loss_history) == 0:
-            return float("inf")
+            return np.float128("inf")
         back = self.loss_history[-window:]
-        return sum(back) / len(back)
+        return np.float128(sum(back) / len(back))
 
     def statistics(self) -> pd.Series:
         return pd.Series(

@@ -173,7 +173,7 @@ class V:
             return self.data
         return self.data.item()
 
-    def add_to_grad(self, grad: np.ndarray) -> None:
+    def add_to_grad(self, grad: np.ndarray | np.float128) -> None:
         """
         Add a gradient to this variable independent of require_grad.
         This is used to accumulate gradient from multiple sources.

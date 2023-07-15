@@ -76,6 +76,7 @@ def gen_float_ex_V(
     """
     while True:
         x = V.uniform(shape, start, end, requires_grad=requires_grad)
+        assert isinstance(x.data, np.ndarray), "x.data must be a numpy array"
         passed = True
         for e in exclude:
             if np.any(abs(x.data - e) < tolerance):

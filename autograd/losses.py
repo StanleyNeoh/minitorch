@@ -133,10 +133,10 @@ def huberloss(output: V, target: V, delta: float = 1.0, axis=None, keepdims=Fals
     target.requires_grad = False
     require_grad = output.requires_grad
     diff = output.data - target.data
-    loss = np.where(
+    data = np.where(
         np.abs(diff) < delta, 0.5 * diff**2, delta * (np.abs(diff) - 0.5 * delta)
     )
-    loss = V.of(np.mean(loss), requires_grad=require_grad)
+    loss = V.of(np.mean(data), requires_grad=require_grad)
 
     def _backward() -> None:
         if output.requires_grad:
@@ -168,6 +168,7 @@ def crossentropyloss(output: V, target_i: np.ndarray, axis=None, keepdims=False)
     Returns:
         V: loss variable
     """
+    assert isinstance(output.data, np.ndarray), "output.data must be a numpy array"
     assert (
         output.data.ndim == 2
     ), "output must be of the format (batch_size, num_classes)"
@@ -176,15 +177,15 @@ def crossentropyloss(output: V, target_i: np.ndarray, axis=None, keepdims=False)
     ), "target_i must be of the format (batch_size, 1)"
     num_batches = len(target_i)
     requires_grad = output.requires_grad
-    est_prob = output.data[np.arange(num_batches), target_i]
-    data = -np.mean(np.log(est_prob))
-    loss = V.of(data, requires_grad=requires_grad)
+    np_data: np.ndarray = output.data
+    s_data = -np.mean(np.log(np_data[np.arange(num_batches), target_i]))
+    loss = V.of(s_data, requires_grad=requires_grad)
 
     def _backward() -> None:
         if output.requires_grad:
             slicer = (np.arange(num_batches), target_i)
-            masked = np.zeros(output.data.shape)
-            masked[*slicer] = (-1.0 / (num_batches * output.data))[*slicer]
+            masked = np.zeros(np_data.shape)
+            masked[*slicer] = (-1.0 / (num_batches * np_data))[*slicer]
             output.add_to_grad(masked * loss.grad)
 
     loss.set_backward(_backward)

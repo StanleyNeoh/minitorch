@@ -45,12 +45,12 @@ class GradChecker:
         self.argseti: list[int] = []
         self.argi: list[int] = []
         self.arg: list[float] = []
-        self.calgrads: list[float] = []
-        self.expgrads: list[float] = []
+        self.calgrads: list[np.float128] = []
+        self.expgrads: list[np.float128] = []
         self.results: Optional[pd.DataFrame] = None
         self.all_passed: Optional[bool] = None
 
-    def evaluate(self, args: tuple[V], initial=2.0) -> bool:
+    def evaluate(self, args: tuple[V, ...], initial=2.0) -> bool:
         """
         Evaluate the model with the given inputs and check the gradients.
         Small adjustments are made to the inputs to approximate the actual gradients
@@ -83,7 +83,7 @@ class GradChecker:
                 testarg = ogarg.copy()
                 testarg[i] += self.increment
                 testarg = testarg.reshape(nparg.shape)
-                x = args[:argi] + [V.of(testarg, requires_grad=True)] + args[argi + 1 :]
+                x = args[:argi] + (V.of(testarg, requires_grad=True),) + args[argi + 1 :]
                 y = self.model(*x).item()
 
                 self.argseti.append(argseti)
@@ -173,7 +173,7 @@ class FunctionChecker(GradChecker):
             bool: whether the test passed
         """
         for e in range(self.epoch):
-            xs = [next(g) for g in self.generators]
+            xs = tuple(next(g) for g in self.generators)
             self.evaluate(xs)
             if not self.all_passed:
                 return False
