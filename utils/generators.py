@@ -101,7 +101,7 @@ def gen_index_NP(
         Iterator[np.ndarray]: Iterator that gives index data
     """
     while True:
-        yield np.random.randint(0, n, size=(num_batches,))
+        yield np.random.randint(0, num_batches, n)
 
 def gen_float_NP(
     start: float,
