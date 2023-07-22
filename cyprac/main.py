@@ -1,6 +1,6 @@
 import time
-import cyautograd.hello
-import cyautograd.primes as Cy
+import hello
+import primes as Cy
 
 start = time.time()
 Cy.primes(10000)
