@@ -1,6 +1,8 @@
-from typing import Callable
-import numpy as np
+import os
+import sys
 
+# Sets the path to the root directory
+sys.path[0] = os.path.abspath(os.path.join(__file__, "..", ".."))
 from autograd import F, V, L
 from model import Model, O, Ly
 from utils import RegressionPlotCanvas, LossHistoryPlotCanvas, gen_sample_V_V

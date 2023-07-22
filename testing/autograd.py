@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import sys
+import os
 import numpy as np
 import pandas as pd
 from typing import Callable, Optional, Iterator
 
-from autograd import F, V, L
-
+# Sets the path to the root directory
+sys.path[0] = os.path.abspath(os.path.join(__file__, "..", ".."))
+from autograd import *
 from utils import gen_float_V, gen_float_ex_V, gen_index_NP 
 
 
