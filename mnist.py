@@ -23,7 +23,7 @@ model = Model(
         Ly.Softmax(),
     ),
     # O.Adam(lr=0.001),
-    O.SGD(lr=0.01),
+    O.SGD(lr=0.001),
     L.crossentropyloss,
 )
 

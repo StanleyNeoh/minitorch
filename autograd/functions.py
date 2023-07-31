@@ -30,7 +30,8 @@ def sum(var: V, axis=None, keepdims=True) -> V:
     data = np.sum(var.data, axis=axis, keepdims=keepdims)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(out.grad * np.ones_like(var.data))
+        if var.requires_grad:
+            var.add_to_grad(out.grad * np.ones_like(var.data))
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -60,6 +61,8 @@ def mean(var: V, axis=None, keepdims=True) -> V:
     data = np.mean(var.data, axis=axis, keepdims=keepdims)
     out = V(data, requires_grad=require_grad)
     def _backward():
+        if not var.requires_grad:
+            return
         if axis is None:
             n = var.data.size
         elif type(axis) is int:
@@ -97,15 +100,17 @@ def rms(var: V, axis=None, keepdims=True) -> V:
     require_grad = var.requires_grad
     data = np.sqrt(np.mean(var.data ** 2, axis=axis, keepdims=keepdims))
     out = V(data, requires_grad=require_grad)
-    if axis is None:
-        n = var.data.size
-    elif type(axis) is int:
-        n = var.data.shape[axis]
-    elif type(axis) is tuple:
-        n = reduce(lambda x, y: x * y, [var.data.shape[i] for i in axis])
-    else:
-        raise Exception('Invalid axis')
     def _backward():
+        if not var.requires_grad:
+            return
+        if axis is None:
+            n = var.data.size
+        elif type(axis) is int:
+            n = var.data.shape[axis]
+        elif type(axis) is tuple:
+            n = reduce(lambda x, y: x * y, [var.data.shape[i] for i in axis])
+        else:
+            raise Exception('Invalid axis')
         var.add_to_grad(out.grad * var.data / (n * out.data))
     out.set_backward(_backward)
     out.add_deps([var])
@@ -132,7 +137,8 @@ def softmax(var: V, axis=None) -> V:
     data /= np.sum(data, axis=axis, keepdims=True)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(out.grad * data * (1 - data))
+        if var.requires_grad:
+            var.add_to_grad(out.grad * data * (1 - data))
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -152,7 +158,8 @@ def abs(var: V) -> V:
     data = np.abs(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(out.grad * np.sign(var.data))
+        if var.requires_grad:
+            var.add_to_grad(out.grad * np.sign(var.data))
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -171,7 +178,8 @@ def sin(var: V) -> V:
     data = np.sin(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(np.cos(var.data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad(np.cos(var.data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -190,7 +198,8 @@ def cos(var: V) -> V:
     data = np.cos(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(-np.sin(var.data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad(-np.sin(var.data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -209,7 +218,8 @@ def tan(var: V) -> V:
     data = np.tan(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(out.grad / np.cos(var.data) ** 2)
+        if var.requires_grad:
+            var.add_to_grad(out.grad / np.cos(var.data) ** 2)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -228,7 +238,8 @@ def relu(var: V) -> V:
     data = np.maximum(var.data, 0)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad((var.data > 0) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad((var.data > 0) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -247,7 +258,8 @@ def sinh(var: V) -> V:
     data = np.sinh(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(np.cosh(var.data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad(np.cosh(var.data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -266,7 +278,8 @@ def cosh(var: V) -> V:
     data = np.cosh(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(np.sinh(var.data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad(np.sinh(var.data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -285,7 +298,8 @@ def tanh(var: V) -> V:
     data = np.tanh(var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad((1 - data ** 2) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad((1 - data ** 2) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -304,7 +318,8 @@ def log(var: V) -> V:
     data = np.log(np.abs(var.data))
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(out.grad / var.data)
+        if var.requires_grad:
+            var.add_to_grad(out.grad / var.data)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -323,7 +338,8 @@ def sigmoid(var: V) -> V:
     data = 1 / (1 + np.exp(-var.data))
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad(data * (1 - data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad(data * (1 - data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -344,7 +360,8 @@ def elu(var: V, a = 1.0) -> V:
     data = np.where(var.data > 0, var.data, a * (np.exp(var.data) - 1))
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * np.exp(var.data) * out.grad)
+        if var.requires_grad:
+            var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * np.exp(var.data) * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -365,7 +382,8 @@ def leakyrelu(var: V, a = 0.01) -> V:
     data = np.where(var.data > 0, var.data, a * var.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * out.grad)
+        if var.requires_grad:
+            var.add_to_grad((var.data > 0) * out.grad + (var.data <= 0) * a * out.grad)
     out.set_backward(_backward)
     out.add_deps([var])
     return out
@@ -387,8 +405,10 @@ def where(cond: np.ndarray | np.bool_, x: V, y: V) -> V:
     data = np.where(cond, x.data, y.data)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        x.add_to_grad(out.grad * cond)
-        y.add_to_grad(out.grad * (1.0 - cond))
+        if x.requires_grad:
+            x.add_to_grad(out.grad * cond)
+        if y.requires_grad:
+            y.add_to_grad(out.grad * (1.0 - cond))
     out.set_backward(_backward)
     out.add_deps([x, y])
     return out
