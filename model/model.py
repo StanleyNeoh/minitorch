@@ -103,12 +103,14 @@ class Model:
         Returns:
             None
         """
+        last = self.layer.layers[0].W
         time_start = time.time()
-        for _ in range(epoch):
+        for e in range(epoch):
             try:
                 x, y = next(gen_data)
             except StopIteration:
                 break
+            print(f"Epoch {e+1}/{epoch}", end="\r")
 
             y_hat = self.layer.forward(x)
             loss = self.loss(y_hat, y)
@@ -116,6 +118,9 @@ class Model:
             self.optimiser.zero_grad()
             loss.backward()
             self.optimiser.step()
+            if e % 100 == 0:
+                print("delta", (self.layer.layers[0].W - last).data)
+                print("Loss", loss.item())
 
         self.training_time += time.time() - time_start
 

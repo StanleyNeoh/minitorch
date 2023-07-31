@@ -132,7 +132,7 @@ def softmax(var: V, axis=None) -> V:
     data /= np.sum(data, axis=axis, keepdims=True)
     out = V(data, requires_grad=require_grad)
     def _backward():
-        out.add_to_grad(out.grad * data * (1 - data))
+        var.add_to_grad(out.grad * data * (1 - data))
     out.set_backward(_backward)
     out.add_deps([var])
     return out

@@ -154,7 +154,7 @@ def huberloss(output: V, target: V, delta: float = 1.0, axis=None, keepdims=Fals
     return loss
 
 
-def crossentropyloss(output: V, target_i: np.ndarray, axis=None, keepdims=False) -> V:
+def crossentropyloss(output: V, target_i: np.ndarray, eps=1e-5) -> V:
     """
     Cross entropy loss for a variable.
 
@@ -184,7 +184,7 @@ def crossentropyloss(output: V, target_i: np.ndarray, axis=None, keepdims=False)
         if output.requires_grad:
             slicer = (np.arange(num_batches), target_i)
             masked = np.zeros(output.data.shape)
-            masked[*slicer] = (-1.0 / (num_batches * output.data))[*slicer]
+            masked[*slicer] = (-1.0 / (num_batches * output.data + eps))[*slicer]
             output.add_to_grad(masked * loss.grad)
 
     loss.set_backward(_backward)

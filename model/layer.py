@@ -90,7 +90,7 @@ class Sequential(Layer):
         """
         parameters = []
         for layer in self.layers:
-            parameters += layer.parameters()
+            parameters.extend(layer.parameters())
         return parameters
 
     def copy(self, reinitialise: bool=False) -> Layer:
@@ -245,7 +245,45 @@ class Sigmoid(Layer):
             Layer: Copy of the Sigmoid layer.
         """
         return Sigmoid()
+
+class Softmax(Layer):
+    def __init__(self, axis: int = -1) -> None:
+        self.axis = axis
+
+    def forward(self, input) -> V:
+        """
+        Forward pass of the Softmax layer.
+
+        Args:
+            input (V): Input to the Softmax layer.
+
+        Returns:
+            V: Output of the Softmax layer.
+        """
+        output = F.softmax(input, axis=self.axis)
+        return output
     
+    def parameters(self):
+        """
+        Get the parameters of the Softmax layer.
+
+        Returns:
+            list[V]: Parameters of the Softmax layer.
+        """
+        return []
+
+    def copy(self, reinitialise: bool=False) -> Layer:
+        """
+        Copy the Softmax layer.
+
+        Args:
+            reinitialise (bool, optional): This parameter is ignored. Defaults to False.
+            
+        Returns:
+            Layer: Copy of the Softmax layer.
+        """
+        return Softmax(axis=self.axis)
+
 
 class Ly:
     """
@@ -256,3 +294,4 @@ class Ly:
     Linear = Linear
     ReLU = ReLU
     Sigmoid = Sigmoid
+    Softmax = Softmax
