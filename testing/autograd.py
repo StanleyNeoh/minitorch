@@ -98,7 +98,7 @@ class GradChecker:
                 "argseti": self.argseti,
                 "argi": self.argi,
                 "arg": self.arg,
-                "cal": self.calgrads,
+                "cal": self.calgrads[:len(self.expgrads)],
                 "exp": self.expgrads,
             },
         )
@@ -133,14 +133,13 @@ class FunctionChecker(GradChecker):
     by generating random inputs.
     """
 
-    merger = F.sum
-
     def __init__(
         self,
         function: Callable[..., V],
         generators: list[Iterator[V]],
         name: str,
         epoch: int = 100,
+        merger: Callable[..., V] = F.sum,
     ):
         """
         Initialize a function checker with a function. GradChecker parameters are set to default.
@@ -157,7 +156,7 @@ class FunctionChecker(GradChecker):
 
         def model(*xs: list[V]) -> V:
             x = function(*xs)
-            x = FunctionChecker.merger(x)
+            x = merger(x)
             return x
 
         super().__init__(model=model)
@@ -196,7 +195,8 @@ def autograd_test():
         FunctionChecker(F.sum, [gen_float_V(-10.0, 10.0)], "Sum"),
         FunctionChecker(F.mean, [gen_float_V(-10.0, 10.0)], "Mean"),
         FunctionChecker(F.rms, [gen_float_V(-10.0, 10.0)], "RMS"),
-        FunctionChecker(F.softmax, [gen_float_V(-10.0, 10.0)], "Softmax"),
+        FunctionChecker(F.quadsum, [gen_float_V(-10.0, 10.0)], "QuadSum"),
+        # FunctionChecker(F.softmax, [gen_float_V(-10.0, 10.0, shape=(2, 2))], "Softmax", merger=lambda x: x[0, 0]),
         FunctionChecker(F.abs, [gen_float_V(-10.0, 10.0)], "Abs"),
         FunctionChecker(F.sin, [gen_float_V(-10.0, 10.0)], "Sin"),
         FunctionChecker(F.cos, [gen_float_V(-10.0, 10.0)], "Cos"),

@@ -116,6 +116,38 @@ def rms(var: V, axis=None, keepdims=True) -> V:
     out.add_deps([var])
     return out
 
+def quadsum(var: V, axis=None, keepdims=True) -> V:
+    """
+    Sum of squares of a variable along an axis.
+
+    If axis is None, quadsum all elements.
+
+    If axis is an integer, quadsum along that axis.
+
+    If axis is a tuple, quadsum along all axes in the tuple.
+
+    If keepdims is True, keep the dimensions of the original variable.
+
+    If keepdims is False, remove the dimensions of the original variable.
+
+    Args:
+        var (V): variable
+        axis (int, tuple, optional): axis to quadsum along. Defaults to None.
+        keepdims (bool, optional): whether to keep dimensions. Defaults to True.
+
+    Returns:
+        V: variable
+    """
+    require_grad = var.requires_grad
+    data = np.sum(var.data ** 2, axis=axis, keepdims=keepdims)
+    out = V(data, requires_grad=require_grad)
+    def _backward():
+        if var.requires_grad:
+            var.add_to_grad(out.grad * var.data * 2)
+    out.set_backward(_backward)
+    out.add_deps([var])
+    return out
+
 def softmax(var: V, axis=None) -> V:
     """
     Softmax of a variable along an axis.
@@ -440,6 +472,7 @@ class F:
     sum = sum
     mean = mean
     rms = rms
+    quadsum = quadsum
     softmax = softmax
     sin = sin
     cos = cos

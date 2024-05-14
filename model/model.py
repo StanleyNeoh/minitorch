@@ -119,7 +119,7 @@ class Model:
             loss.backward()
             self.optimiser.step()
             if e % 100 == 0:
-                print("delta", (self.layer.layers[0].W - last).data)
+                # print("delta", (self.layer.layers[0].W - last).data)
                 print("Loss", loss.item())
 
         self.training_time += time.time() - time_start

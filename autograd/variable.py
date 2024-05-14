@@ -435,6 +435,19 @@ class V:
         out.set_backward(_backward)
         out.add_deps([self, v])
         return out
+    
+    def __getitem__(self, key: int | slice | list[int]) -> V:
+        data = self.data[key]
+        requires_grad = self.requires_grad
+        out = V(data, requires_grad=requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad[key] += out.grad
+        
+        out.set_backward(_backward)
+        out.add_deps([self])
+        return out
 
     def __lt__(self, other: object) -> np.ndarray | np.bool_:
         assert isinstance(
